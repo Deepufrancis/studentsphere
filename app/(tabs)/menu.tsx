@@ -8,6 +8,7 @@ export default function menuScreen() {
       
       <View>
               <Button title="Logout" onPress={handleLogout}/>
+              <Text>hiiiii</Text>
             </View>
     </View>
   );

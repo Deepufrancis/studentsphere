@@ -1,10 +1,26 @@
 import { Text, View, StyleSheet, TouchableOpacity, Modal, TextInput, Pressable } from 'react-native';
-import { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState, useEffect } from 'react';
 
 export default function Index() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [textInputValue, setTextInputValue] = useState('');
-  const [courses, setCourses] = useState<string[]>([]);
+  const [descriptionInputValue, setDescriptionInputValue] = useState('');
+  const [courses, setCourses] = useState<{ name: string; description: string }[]>([]);
+
+  useEffect(() => {
+    const loadCourses = async () => {
+      const savedCourses = await AsyncStorage.getItem('courses');
+      if (savedCourses) {
+        setCourses(JSON.parse(savedCourses));
+      }
+    };
+    loadCourses();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem('courses', JSON.stringify(courses));
+  }, [courses]);
 
   const handleOpenModal = () => {
     setIsModalVisible(true);
@@ -12,12 +28,15 @@ export default function Index() {
 
   const handleCloseModal = () => {
     setIsModalVisible(false);
+    setTextInputValue('');
+    setDescriptionInputValue('');
   };
 
   const handleSubmit = () => {
-    if (textInputValue.trim()) {
-      setCourses([...courses, textInputValue]);
+    if (textInputValue.trim() && descriptionInputValue.trim()) {
+      setCourses([...courses, { name: textInputValue, description: descriptionInputValue }]);
       setTextInputValue('');
+      setDescriptionInputValue('');
       setIsModalVisible(false);
     }
   };
@@ -44,6 +63,12 @@ export default function Index() {
               placeholder="Enter course name"
               style={styles.input}
             />
+            <TextInput
+              value={descriptionInputValue}
+              onChangeText={setDescriptionInputValue}
+              placeholder="Enter course description"
+              style={styles.input}
+            />
             <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
               <Text style={styles.buttonText}>Submit</Text>
             </TouchableOpacity>
@@ -58,7 +83,10 @@ export default function Index() {
         {courses.length > 0 ? (
           courses.map((course, index) => (
             <View key={index} style={styles.courseItem}>
-              <Text style={styles.courseName}>{course}</Text>
+              <View>
+                <Text style={styles.courseName}>{course.name}</Text>
+                <Text style={styles.courseDescription}>{course.description}</Text>
+              </View>
               <TouchableOpacity
                 onPress={() => handleDelete(index)}
                 style={styles.deleteButton}
@@ -169,6 +197,10 @@ const styles = StyleSheet.create({
   courseName: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  courseDescription: {
+    fontSize: 14,
+    color: 'gray',
   },
   deleteButton: {
     backgroundColor: '#ff4d4d',
