@@ -1,6 +1,4 @@
 import { Tabs } from 'expo-router';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
@@ -29,24 +27,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="assignments"
-        options={{
-          title: 'Assignments',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialIcons name="assignment" size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-      name="attendance"
-      options={{
-        title: 'Attendance',
-        tabBarIcon: ({ color, focused }) => (
-            <AntDesign name="calendar" size={24} color={color} /> 
-        ),
-      }}
-    />
     <Tabs.Screen
       name="menu"
       options={{

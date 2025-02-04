@@ -13,6 +13,12 @@ export default function Login() {
           router.push('/teacher');
         }}
       />
+      <Button
+        title="student"
+        onPress={() => {
+          router.push('/student');
+        }}
+      />
     </View>
   );
 }
