@@ -1,12 +1,16 @@
-import { Text, View, StyleSheet, TouchableOpacity, Modal, TextInput, Pressable } from 'react-native';
+import { Text, View, StyleSheet, TouchableOpacity, Modal, TextInput, Pressable, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect } from 'react';
+import { Alert } from 'react-native';
+
 
 export default function Index() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [textInputValue, setTextInputValue] = useState('');
   const [descriptionInputValue, setDescriptionInputValue] = useState('');
   const [courses, setCourses] = useState<{ name: string; description: string }[]>([]);
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
+  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
 
   useEffect(() => {
     const loadCourses = async () => {
@@ -34,7 +38,7 @@ export default function Index() {
 
   const handleSubmit = () => {
     if (textInputValue.trim() && descriptionInputValue.trim()) {
-      setCourses([...courses, { name: textInputValue, description: descriptionInputValue }]);
+      setCourses((prevCourses) => [...prevCourses, { name: textInputValue, description: descriptionInputValue }]);
       setTextInputValue('');
       setDescriptionInputValue('');
       setIsModalVisible(false);
@@ -42,8 +46,33 @@ export default function Index() {
   };
 
   const handleDelete = (index: number) => {
-    const updatedCourses = courses.filter((_, i) => i !== index);
-    setCourses(updatedCourses);
+    if (Platform.OS === 'web') {
+      setDeleteIndex(index);
+      setIsConfirmModalVisible(true);
+    } else {
+      Alert.alert(
+        'Delete Confirmation',
+        'Are you sure you want to delete this course?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              setCourses((prevCourses) => prevCourses.filter((_, i) => i !== index));
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const confirmDelete = () => {
+    if (deleteIndex !== null) {
+      setCourses((prevCourses) => prevCourses.filter((_, i) => i !== deleteIndex));
+      setIsConfirmModalVisible(false);
+      setDeleteIndex(null);
+    }
   };
 
   return (
@@ -74,6 +103,26 @@ export default function Index() {
             </TouchableOpacity>
             <TouchableOpacity onPress={handleCloseModal} style={styles.closeButton}>
               <Text style={styles.buttonText}>Close</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        transparent={true}
+        visible={isConfirmModalVisible}
+        animationType="fade"
+        onRequestClose={() => setIsConfirmModalVisible(false)}
+      >
+        <Pressable style={styles.modalBackground} onPress={() => setIsConfirmModalVisible(false)}>
+          <Pressable style={styles.modalContainer} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Delete Confirmation</Text>
+            <Text>Are you sure you want to delete this course?</Text>
+            <TouchableOpacity onPress={confirmDelete} style={styles.submitButton}>
+              <Text style={styles.buttonText}>Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setIsConfirmModalVisible(false)} style={styles.closeButton}>
+              <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
