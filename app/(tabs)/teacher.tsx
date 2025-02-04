@@ -1,16 +1,13 @@
-import { Text, View, StyleSheet, TouchableOpacity, Modal, TextInput, Pressable, Platform } from 'react-native';
+import { Text, View, StyleSheet, TouchableOpacity, Modal, TextInput, Pressable, Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect } from 'react';
-import { Alert } from 'react-native';
-
 
 export default function Index() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [textInputValue, setTextInputValue] = useState('');
   const [descriptionInputValue, setDescriptionInputValue] = useState('');
   const [courses, setCourses] = useState<{ name: string; description: string }[]>([]);
-  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
-  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
+  const [editIndex, setEditIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const loadCourses = async () => {
@@ -26,7 +23,12 @@ export default function Index() {
     AsyncStorage.setItem('courses', JSON.stringify(courses));
   }, [courses]);
 
-  const handleOpenModal = () => {
+  const handleOpenModal = (index: number | null = null) => {
+    if (index !== null) {
+      setEditIndex(index);
+      setTextInputValue(courses[index].name);
+      setDescriptionInputValue(courses[index].description);
+    }
     setIsModalVisible(true);
   };
 
@@ -34,55 +36,59 @@ export default function Index() {
     setIsModalVisible(false);
     setTextInputValue('');
     setDescriptionInputValue('');
+    setEditIndex(null);
   };
 
   const handleSubmit = () => {
     if (textInputValue.trim() && descriptionInputValue.trim()) {
-      setCourses((prevCourses) => [...prevCourses, { name: textInputValue, description: descriptionInputValue }]);
-      setTextInputValue('');
-      setDescriptionInputValue('');
-      setIsModalVisible(false);
+      if (editIndex !== null) {
+        const updatedCourses = [...courses];
+        updatedCourses[editIndex] = { name: textInputValue, description: descriptionInputValue };
+        setCourses(updatedCourses);
+      } else {
+        setCourses((prevCourses) => [...prevCourses, { name: textInputValue, description: descriptionInputValue }]);
+      }
+      handleCloseModal();
     }
   };
 
   const handleDelete = (index: number) => {
-    if (Platform.OS === 'web') {
-      setDeleteIndex(index);
-      setIsConfirmModalVisible(true);
-    } else {
-      Alert.alert(
-        'Delete Confirmation',
-        'Are you sure you want to delete this course?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => {
-              setCourses((prevCourses) => prevCourses.filter((_, i) => i !== index));
-            },
-          },
-        ]
-      );
-    }
-  };
-
-  const confirmDelete = () => {
-    if (deleteIndex !== null) {
-      setCourses((prevCourses) => prevCourses.filter((_, i) => i !== deleteIndex));
-      setIsConfirmModalVisible(false);
-      setDeleteIndex(null);
-    }
+    Alert.alert('Delete Confirmation', 'Are you sure you want to delete this course?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => setCourses((prevCourses) => prevCourses.filter((_, i) => i !== index)),
+      },
+    ]);
   };
 
   return (
     <View style={styles.container}>
-      <Modal
-        transparent={true}
-        visible={isModalVisible}
-        animationType="slide"
-        onRequestClose={handleCloseModal}
-      >
+      {courses.length > 0 ? (
+        courses.map((course, index) => (
+          <View key={index} style={styles.courseItem}>
+            <Text style={styles.courseName}>{course.name}</Text>
+            <Text style={styles.courseDescription}>{course.description}</Text>
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity onPress={() => handleOpenModal(index)} style={styles.editButton}>
+                <Text style={styles.buttonText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleDelete(index)} style={styles.deleteButton}>
+                <Text style={styles.buttonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))
+      ) : (
+        <Text style={styles.noCoursesText}>No courses added yet</Text>
+      )}
+
+      <TouchableOpacity onPress={() => handleOpenModal()} style={styles.addButton}>
+        <Text style={styles.addButtonText}>+</Text>
+      </TouchableOpacity>
+
+      <Modal visible={isModalVisible} transparent={true} animationType="slide">
         <Pressable style={styles.modalBackground} onPress={handleCloseModal}>
           <Pressable style={styles.modalContainer} onPress={() => {}}>
             <Text style={styles.modalTitle}>Add Course</Text>
@@ -107,51 +113,6 @@ export default function Index() {
           </Pressable>
         </Pressable>
       </Modal>
-
-      <Modal
-        transparent={true}
-        visible={isConfirmModalVisible}
-        animationType="fade"
-        onRequestClose={() => setIsConfirmModalVisible(false)}
-      >
-        <Pressable style={styles.modalBackground} onPress={() => setIsConfirmModalVisible(false)}>
-          <Pressable style={styles.modalContainer} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Delete Confirmation</Text>
-            <Text>Are you sure you want to delete this course?</Text>
-            <TouchableOpacity onPress={confirmDelete} style={styles.submitButton}>
-              <Text style={styles.buttonText}>Delete</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setIsConfirmModalVisible(false)} style={styles.closeButton}>
-              <Text style={styles.buttonText}>Cancel</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      <View style={styles.courseList}>
-        {courses.length > 0 ? (
-          courses.map((course, index) => (
-            <View key={index} style={styles.courseItem}>
-              <View>
-                <Text style={styles.courseName}>{course.name}</Text>
-                <Text style={styles.courseDescription}>{course.description}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => handleDelete(index)}
-                style={styles.deleteButton}
-              >
-                <Text style={styles.deleteButtonText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          ))
-        ) : (
-          <Text style={styles.noCoursesText}>No courses added yet</Text>
-        )}
-      </View>
-
-      <TouchableOpacity onPress={handleOpenModal} style={styles.addButton}>
-        <Text style={styles.addButtonText}>+</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -229,14 +190,10 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
-  courseList: {
-    marginTop: 20,
-    width: '100%',
-  },
   courseItem: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: 10,
     backgroundColor: '#f0f0f0',
     marginVertical: 5,
@@ -249,17 +206,28 @@ const styles = StyleSheet.create({
   },
   courseDescription: {
     fontSize: 14,
-    color: 'gray',
+    color: '#666',
+    marginTop: 5,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 10,
+  },
+  editButton: {
+    backgroundColor: '#FFA500',
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginRight: 5,
   },
   deleteButton: {
-    backgroundColor: '#ff4d4d',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    backgroundColor: '#FF0000',
+    padding: 10,
     borderRadius: 5,
-  },
-  deleteButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    flex: 1,
+    marginLeft: 5,
   },
   noCoursesText: {
     fontStyle: 'italic',
