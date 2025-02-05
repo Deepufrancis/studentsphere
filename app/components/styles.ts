@@ -124,4 +124,13 @@ export default StyleSheet.create({
     color: 'gray',
     textAlign: 'center',
   },
+  fixedAddButtonContainer: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    zIndex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 80, // Ensure there's space for the button at the bottom
+  },
 });
