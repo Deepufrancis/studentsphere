@@ -5,6 +5,7 @@ export default function RootLayout() {
     <Stack initialRouteName='login'>
       <Stack.Screen name="(teach)" options={{headerShown:false }} />
       <Stack.Screen name="+not-found" />
+      <Stack.Screen name="SignUP"/>
       <Stack.Screen name="(student)" options={{ headerShown: false }}></Stack.Screen>
 
     </Stack>
