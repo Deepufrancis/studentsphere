@@ -1,17 +1,10 @@
-// models/Course.js
+// models/course.model.js
 const mongoose = require('mongoose');
 
 const courseSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-  },
-  description: {
-    type: String,
-    required: true,
-  },
-});
+  courseName: { type: String, required: true },
+  description: { type: String, required: true },
+}, { timestamps: true });
 
 const Course = mongoose.model('Course', courseSchema);
-
 module.exports = Course;

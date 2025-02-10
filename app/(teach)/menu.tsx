@@ -13,7 +13,7 @@ export default function menuScreen() {
     </View>
   );
   function handleLogout() {
-    router.push('/login');
+    router.replace('/');
   }
 }
 

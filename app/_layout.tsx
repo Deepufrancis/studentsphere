@@ -1,13 +1,13 @@
-import { Stack } from 'expo-router';
+import { Stack } from "expo-router";
 
 export default function RootLayout() {
   return (
-    <Stack initialRouteName='login'>
-      <Stack.Screen name="(teach)" options={{headerShown:false }} />
+    <Stack>
+      <Stack.Screen name="index" options={{ title: "LOGIN", headerBackVisible:false}} />
+      <Stack.Screen name="(teach)" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" />
-      <Stack.Screen name="SignUP"/>
-      <Stack.Screen name="(student)" options={{ headerShown: false }}></Stack.Screen>
-
+      <Stack.Screen name="SignUP" />
+      <Stack.Screen name="(student)" options={{ headerShown: false }} />
     </Stack>
   );
 }

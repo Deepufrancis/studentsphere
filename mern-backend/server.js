@@ -2,7 +2,10 @@ const express = require('express');
 const mongoose = require('mongoose');
 const path = require('path');
 const cors=require('cors');
-const courseRoutes = require(path.join(__dirname, 'routes', 'courseRoutes')); 
+const courseRoutes = require(path.join(__dirname, 'routes', 'courseRoutes'));
+const authRoutes = require('./routes/authRoutes');
+
+
 
 const app = express();
 
@@ -19,6 +22,7 @@ mongoose.connect('mongodb://localhost:27017/student-sphere', {
 
 
 app.use('/api/courses', courseRoutes); 
+app.use('/api', authRoutes);
 
 
 app.get('/', (req, res) => {
