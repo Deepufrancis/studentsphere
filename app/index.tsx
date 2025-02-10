@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import { Text, View, StyleSheet, TextInput, TouchableOpacity, Alert, Modal, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_BASE_URL = 'http://10.10.33.24:5000/api';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'teacher' | 'student' | ''>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUpLoading, setIsSignUpLoading] = useState(false);
   const [isModalVisible, setModalVisible] = useState(false);
   const [signUpUsername, setSignUpUsername] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
@@ -17,77 +21,69 @@ export default function Login() {
   const router = useRouter();
 
   const handleLogin = async () => {
-    if (role && username && password) {
-      setIsLoading(true);
-
-      try {
-        const response = await fetch('http://10.10.33.24:5000/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, role }),
-        });
-
-        const data = await response.json();
-
-        if (response.status === 200) {
-          router.push(`/${role}`);
-        } else {
-          Alert.alert('Error', data.message);
-        }
-      } catch (error) {
-        Alert.alert('Error', 'Something went wrong!');
-      } finally {
-        setIsLoading(false);
+    if (!username || !password || !role) {
+      return Alert.alert('Error', 'Please fill all fields and select a role.');
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role }),
+      });
+      const data = await response.json();
+      if (response.status===200) {
+        await AsyncStorage.setItem('loggedInUser',username);
+        await AsyncStorage.setItem('userRole',role);
+        router.push(`/${role}`);
+      } else {
+        Alert.alert('Error', data.message || 'Login failed.');
       }
-    } else {
-      Alert.alert('Error', 'Please fill all fields and select a role.');
+    } catch (error) {
+      Alert.alert('Error', 'Network error. Please try again later.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSignUp = async () => {
-    if (signUpUsername && signUpPassword && signUpRole) {
-      try {
-        const response = await fetch('http://10.10.33.24:5000/api/signUp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: signUpUsername, password: signUpPassword, role: signUpRole }),
-        });
-
-        const data = await response.json();
-
-        if (response.status === 201) {
-          Alert.alert('Success', 'User created successfully!');
-          setModalVisible(false);
-        } else {
-          Alert.alert('Error', data.message);
-        }
-      } catch (error) {
-        Alert.alert('Error', 'Something went wrong!');
+    if (!signUpUsername || !signUpPassword || !signUpRole) {
+      return Alert.alert('Error', 'Please fill all fields.');
+    }
+    setIsSignUpLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/signUp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: signUpUsername, password: signUpPassword, role: signUpRole }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        Alert.alert('Success', 'User created successfully!');
+        setSignUpUsername('');
+        setSignUpPassword('');
+        setSignUpRole('');
+        setModalVisible(false);
+      } else {
+        Alert.alert('Error', data.message || 'Sign-up failed.');
       }
-    } else {
-      Alert.alert('Error', 'Please fill all fields.');
+    } catch (error) {
+      Alert.alert('Error', 'Network error. Please try again later.');
+    } finally {
+      setIsSignUpLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>PU Student Sphere</Text>
-
       <TextInput style={styles.input} placeholder="Username" value={username} onChangeText={setUsername} />
-
       <View style={styles.passwordContainer}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder="Password"
-          secureTextEntry={!showPassword}
-          value={password}
-          onChangeText={setPassword}
-        />
+        <TextInput style={styles.passwordInput} placeholder="Password" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
         <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-          <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color="gray" />
+          <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={24} color="gray" />
         </TouchableOpacity>
       </View>
-
       <View style={styles.roleButtons}>
         <TouchableOpacity onPress={() => setRole('teacher')} style={[styles.button, role === 'teacher' && styles.selected]}>
           <Text style={styles.buttonText}>Teacher</Text>
@@ -96,40 +92,19 @@ export default function Login() {
           <Text style={styles.buttonText}>Student</Text>
         </TouchableOpacity>
       </View>
-
-      {isLoading ? (
-        <ActivityIndicator size="large" color="#007bff" />
-      ) : (
-        <>
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Login</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.signUpButton} onPress={() => setModalVisible(true)}>
-            <Text style={styles.buttonText}>Sign Up</Text>
-          </TouchableOpacity>
-        </>
-      )}
-
+      {isLoading ? <ActivityIndicator size="large" color="#007bff" /> : <TouchableOpacity style={styles.loginButton} onPress={handleLogin}><Text style={styles.loginButtonText}>Login</Text></TouchableOpacity>}
+      <TouchableOpacity style={styles.signUpButton} onPress={() => setModalVisible(true)}><Text style={styles.buttonText}>Sign Up</Text></TouchableOpacity>
       <Modal animationType="slide" transparent={true} visible={isModalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Sign Up</Text>
-
             <TextInput style={styles.input} placeholder="Username" value={signUpUsername} onChangeText={setSignUpUsername} />
-
             <View style={styles.passwordContainer}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="Password"
-                secureTextEntry={!showSignUpPassword}
-                value={signUpPassword}
-                onChangeText={setSignUpPassword}
-              />
+              <TextInput style={styles.passwordInput} placeholder="Password" secureTextEntry={!showSignUpPassword} value={signUpPassword} onChangeText={setSignUpPassword} />
               <TouchableOpacity onPress={() => setShowSignUpPassword(!showSignUpPassword)} style={styles.eyeButton}>
-                <Ionicons name={showSignUpPassword ? "eye-off" : "eye"} size={24} color="gray" />
+                <Ionicons name={showSignUpPassword ? 'eye-off' : 'eye'} size={24} color="gray" />
               </TouchableOpacity>
             </View>
-
             <View style={styles.roleButtons}>
               <TouchableOpacity onPress={() => setSignUpRole('teacher')} style={[styles.button, signUpRole === 'teacher' && styles.selected]}>
                 <Text style={styles.buttonText}>Teacher</Text>
@@ -138,20 +113,15 @@ export default function Login() {
                 <Text style={styles.buttonText}>Student</Text>
               </TouchableOpacity>
             </View>
-
-            <TouchableOpacity style={styles.loginButton} onPress={handleSignUp}>
-              <Text style={styles.loginButtonText}>Sign Up</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
-              <Text style={styles.buttonText}>Close</Text>
-            </TouchableOpacity>
+            {isSignUpLoading ? <ActivityIndicator size="large" color="#007bff" /> : <TouchableOpacity style={styles.loginButton} onPress={handleSignUp}><Text style={styles.loginButtonText}>Sign Up</Text></TouchableOpacity>}
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}><Text style={styles.buttonText}>Close</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#25292e', justifyContent: 'center', alignItems: 'center', padding: 20 },

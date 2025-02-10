@@ -4,37 +4,36 @@ const router = express.Router();
 
 // Add Course
 router.post('/', async (req, res) => {
-  const newCourse = new Course(req.body);
-  await newCourse.save();
-  res.status(201).json(newCourse);
-});
-
-// Get All Courses
-router.get('/', async (req, res) => {
-  const courses = await Course.find();
-  res.status(200).json(courses);
-});
-
-// Delete Course (Newly Added)
-router.delete('/:id', async (req, res) => {
   try {
-    const id = req.params.id.trim(); // ✅ Remove spaces and newlines
+    const { courseName, description, teacher } = req.body;
 
-    // ✅ Check if the ID is a valid MongoDB ObjectId (24 characters, hex)
-    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ message: "Invalid course ID format" });
+    if (!courseName || !teacher) {
+      return res.status(400).json({ message: "Course name and teacher are required" });
     }
 
-    const course = await Course.findByIdAndDelete(id);
-    if (!course) {
-      return res.status(404).json({ message: "Course not found" });
-    }
-
-    res.json({ message: "Course deleted successfully" });
+    const newCourse = new Course({ courseName, description, teacher });
+    await newCourse.save();
+    res.status(201).json(newCourse);
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    res.status(500).json({ message: "Error adding course", error });
   }
 });
+
+// Get Courses (Filtered by Teacher)
+router.get('/', async (req, res) => {
+  try {
+    const { teacher } = req.query; // Get teacher from query params
+
+    const filter = teacher ? { teacher } : {}; // Filter courses if teacher exists
+    const courses = await Course.find(filter);
+
+    res.status(200).json(courses);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching courses", error });
+  }
+});
+
+// Update Course
 router.put('/:id', async (req, res) => {
   try {
     const { courseName, description } = req.body;
@@ -54,5 +53,24 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Delete Course
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = req.params.id.trim();
+
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid course ID format" });
+    }
+
+    const course = await Course.findByIdAndDelete(id);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    res.json({ message: "Course deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+});
 
 module.exports = router;

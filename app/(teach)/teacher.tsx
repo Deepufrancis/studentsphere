@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Modal, StyleSheet } from "react-native";
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Modal, StyleSheet, Alert } from "react-native";
 import axios from "axios";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Course {
   _id: string;
   courseName: string;
   description: string;
+  teacher: string;
 }
 
 const Teacher: React.FC = () => {
+  const [username, setUsername] = useState('');
   const [courseName, setCourseName] = useState("");
   const [description, setDescription] = useState("");
   const [courses, setCourses] = useState<Course[]>([]);
@@ -17,14 +20,23 @@ const Teacher: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetchCourses();
+    const fetchUsername = async () => {
+      const storedUser = await AsyncStorage.getItem('loggedInUser');
+      if (storedUser) {
+        setUsername(storedUser);
+        fetchCourses(storedUser);
+      }
+    };
+
+    fetchUsername();
   }, []);
 
-  const fetchCourses = async () => {
+  const fetchCourses = async (teacherUsername: string) => {
     try {
-      const response = await axios.get("http://localhost:5000/api/courses");
+      const response = await axios.get(`http://10.10.33.24:5000/api/courses?teacher=${teacherUsername}`);
       setCourses(response.data);
     } catch (err) {
       setError("Failed to fetch courses. Please try again.");
@@ -37,15 +49,24 @@ const Teacher: React.FC = () => {
     setError(null);
     setSuccess(null);
 
+    if (!username) {
+      Alert.alert("Error", "Username not found. Please log in again.");
+      return;
+    }
+
     try {
       if (editingCourse) {
-        await axios.put(`http://localhost:5000/api/courses/${editingCourse._id}`, {
+        await axios.put(`http://10.10.33.24:5000/api/courses/${editingCourse._id}`, {
           courseName,
           description,
         });
         setSuccess("Course updated successfully!");
       } else {
-        await axios.post("http://localhost:5000/api/courses", { courseName, description });
+        await axios.post("http://10.10.33.24:5000/api/courses", {
+          courseName,
+          description,
+          teacher: username,
+        });
         setSuccess("Course added successfully!");
       }
 
@@ -53,20 +74,27 @@ const Teacher: React.FC = () => {
       setDescription("");
       setIsModalOpen(false);
       setEditingCourse(null);
-      fetchCourses();
+      fetchCourses(username);
     } catch (error) {
       setError("Error saving course. Please try again.");
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this course?")) return;
-    try {
-      await axios.delete(`http://localhost:5000/api/courses/${id}`);
-      fetchCourses();
-    } catch (error) {
-      setError("Error deleting course.");
-    }
+    Alert.alert("Delete Course", "Are you sure you want to delete this course?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        onPress: async () => {
+          try {
+            await axios.delete(`http://10.10.33.24:5000/api/courses/${id}`);
+            fetchCourses(username);
+          } catch (error) {
+            setError("Error deleting course.");
+          }
+        },
+      },
+    ]);
   };
 
   const openEditModal = (course: Course) => {
@@ -76,15 +104,29 @@ const Teacher: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  const filteredCourses = courses.filter(course =>
+    course.courseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    course.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Course List</Text>
+      <Text style={styles.title}>Welcome, {username}</Text>
+      <Text style={styles.subtitle}>Your Courses</Text>
+
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search Courses..."
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+      />
+
       {loading && <Text>Loading courses...</Text>}
       {error && <Text style={styles.error}>{error}</Text>}
-      {!loading && !error && courses.length === 0 && <Text>No courses available.</Text>}
+      {!loading && !error && filteredCourses.length === 0 && <Text>No courses found.</Text>}
 
       <ScrollView style={styles.courseList}>
-        {courses.map((course) => (
+        {filteredCourses.map((course) => (
           <View key={course._id} style={styles.courseCard}>
             <Text style={styles.courseTitle}>{course.courseName}</Text>
             <Text>{course.description}</Text>
@@ -98,7 +140,6 @@ const Teacher: React.FC = () => {
         ))}
       </ScrollView>
 
-      {/* Floating Add Button */}
       <TouchableOpacity
         onPress={() => {
           setEditingCourse(null);
@@ -111,7 +152,6 @@ const Teacher: React.FC = () => {
         <Text style={styles.addButtonText}>+</Text>
       </TouchableOpacity>
 
-      {/* Modal */}
       <Modal visible={isModalOpen} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -146,7 +186,8 @@ export default Teacher;
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: "#f8f8f8" },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 10 },
+  title: { fontSize: 24, fontWeight: "bold", marginBottom: 5 },
+  subtitle: { fontSize: 18, marginBottom: 10 },
   courseList: { flex: 1 },
   courseCard: { backgroundColor: "#fff", padding: 15, marginVertical: 5, borderRadius: 8 },
   courseTitle: { fontSize: 18, fontWeight: "bold" },
@@ -154,7 +195,7 @@ const styles = StyleSheet.create({
   deleteButton: { backgroundColor: "red", padding: 10, marginTop: 5, borderRadius: 5 },
   addButton: {
     position: "absolute",
-    bottom: 80, // Adjusted to stay above bottom tab
+    bottom: 30,
     right: 20,
     backgroundColor: "#007BFF",
     width: 60,
@@ -162,11 +203,14 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 5, // Adds shadow on Android
-    shadowColor: "#000", // Adds shadow on iOS
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    elevation: 5,
+  },
+  searchInput: { 
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 10
   },
   addButtonText: { fontSize: 30, color: "#fff" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
