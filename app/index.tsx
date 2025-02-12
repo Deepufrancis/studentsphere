@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://10.10.33.24:5000/api';
+const API_BASE_URL = 'http://10.10.33.76:5000/api';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -124,21 +124,112 @@ export default function Login() {
 
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#25292e', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  title: { fontSize: 28, color: '#fff', marginBottom: 40 },
-  input: { width: '100%', padding: 10, backgroundColor: '#fff', borderRadius: 5, marginBottom: 15 },
-  passwordContainer: { flexDirection: 'row', alignItems: 'center', width: '100%', backgroundColor: '#fff', borderRadius: 5,marginBottom:10 },
-  passwordInput: { flex: 1, padding: 10 },
-  eyeButton: { padding: 10 },
-  roleButtons: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 20 },
-  button: { width: '48%', padding: 10, backgroundColor: '#007bff', alignItems: 'center', borderRadius: 5 },
-  selected: { backgroundColor: 'rgb(4, 155, 16)' },
-  buttonText: { color: '#fff', fontSize: 16 },
-  loginButton: { width: '100%', padding: 15, backgroundColor: '#28a745', alignItems: 'center', borderRadius: 5, marginBottom: 10 },
-  loginButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  signUpButton: { width: '100%', padding: 15, backgroundColor: '#ffc107', alignItems: 'center', borderRadius: 5 },
-  closeButton: { marginTop: 10, padding: 10, backgroundColor: '#dc3545', alignItems: 'center', borderRadius: 5 },
-  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
-  modalContainer: { width: '80%', padding: 20, backgroundColor: '#fff', borderRadius: 10 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
+  container: { 
+    flex: 1, 
+    backgroundColor: 'white', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 24 
+  },
+  title: { 
+    fontSize: 30, 
+    color: '#f8f9fa', 
+    fontWeight: 'bold', 
+    marginBottom: 40 
+  },
+  input: { 
+    width: '100%', 
+    padding: 14, 
+    backgroundColor: '#2d2d3a', 
+    borderRadius: 10, 
+    marginBottom: 15, 
+    color: '#fff', 
+    fontSize: 16 
+  },
+  passwordContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    width: '100%', 
+    backgroundColor: '#2d2d3a', 
+    borderRadius: 10, 
+    marginBottom: 15, 
+    paddingHorizontal: 10 
+  },
+  passwordInput: { 
+    flex: 1, 
+    padding: 14, 
+    color: '#fff', 
+    fontSize: 16 
+  },
+  eyeButton: { 
+    padding: 12 
+  },
+  roleButtons: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    width: '100%', 
+    marginBottom: 25 
+  },
+  button: { 
+    width: '48%', 
+    padding: 12, 
+    backgroundColor: '#007bff', 
+    alignItems: 'center', 
+    borderRadius: 10 
+  },
+  selected: { 
+    backgroundColor: '#04a61b' 
+  },
+  buttonText: { 
+    color: '#f8f9fa', 
+    fontSize: 16, 
+    fontWeight: '500' 
+  },
+  loginButton: { 
+    width: '100%', 
+    padding: 16, 
+    backgroundColor: '#28a745', 
+    alignItems: 'center', 
+    borderRadius: 10, 
+    marginBottom: 15 
+  },
+  loginButtonText: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: 'bold' 
+  },
+  signUpButton: { 
+    width: '100%', 
+    padding: 16, 
+    backgroundColor: '#ffc107', 
+    alignItems: 'center', 
+    borderRadius: 10 
+  },
+  closeButton: { 
+    marginTop: 15, 
+    padding: 12, 
+    backgroundColor: '#dc3545', 
+    alignItems: 'center', 
+    borderRadius: 10 
+  },
+  modalOverlay: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(0, 0, 0, 0.6)' 
+  },
+  modalContainer: { 
+    width: '85%', 
+    padding: 25, 
+    backgroundColor: '#2d2d3a', 
+    borderRadius: 12 
+  },
+  modalTitle: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    marginBottom: 15, 
+    textAlign: 'center', 
+    color: '#f8f9fa' 
+  },
 });
+

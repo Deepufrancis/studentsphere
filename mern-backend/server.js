@@ -20,8 +20,12 @@ mongoose.connect('mongodb://localhost:27017/student-sphere', {
 .then(() => console.log('MongoDB Connected'))
 .catch(err => console.error('MongoDB Connection Error:', err));
 
+console.log("Loading course routes...");
 
-app.use('/api/courses', courseRoutes); 
+
+
+app.use('/api/courses', courseRoutes);
+console.log("Course routes loaded.");
 app.use('/api', authRoutes);
 
 

@@ -36,7 +36,7 @@ const Teacher: React.FC = () => {
 
   const fetchCourses = async (teacherUsername: string) => {
     try {
-      const response = await axios.get(`http://10.10.33.24:5000/api/courses?teacher=${teacherUsername}`);
+      const response = await axios.get(`http://10.10.33.76:5000/api/courses?teacher=${teacherUsername}`);
       setCourses(response.data);
     } catch (err) {
       setError("Failed to fetch courses. Please try again.");
@@ -56,13 +56,13 @@ const Teacher: React.FC = () => {
 
     try {
       if (editingCourse) {
-        await axios.put(`http://10.10.33.24:5000/api/courses/${editingCourse._id}`, {
+        await axios.put(`http://10.10.33.76:5000/api/courses/${editingCourse._id}`, {
           courseName,
           description,
         });
         setSuccess("Course updated successfully!");
       } else {
-        await axios.post("http://10.10.33.24:5000/api/courses", {
+        await axios.post("http://10.10.33.76:5000/api/courses", {
           courseName,
           description,
           teacher: username,
@@ -87,7 +87,7 @@ const Teacher: React.FC = () => {
         text: "Delete",
         onPress: async () => {
           try {
-            await axios.delete(`http://10.10.33.24:5000/api/courses/${id}`);
+            await axios.delete(`http://10.10.33.76:5000/api/courses/${id}`);
             fetchCourses(username);
           } catch (error) {
             setError("Error deleting course.");
