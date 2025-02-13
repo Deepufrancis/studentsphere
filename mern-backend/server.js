@@ -4,6 +4,7 @@ const path = require('path');
 const cors=require('cors');
 const courseRoutes = require(path.join(__dirname, 'routes', 'courseRoutes'));
 const authRoutes = require('./routes/authRoutes');
+const requestRoutes = require('./routes/requestRoutes');
 
 
 
@@ -27,6 +28,7 @@ console.log("Loading course routes...");
 app.use('/api/courses', courseRoutes);
 console.log("Course routes loaded.");
 app.use('/api', authRoutes);
+app.use('/api/requests', requestRoutes);
 
 
 app.get('/', (req, res) => {
