@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet,Button} from 'react-native';
+import { Text, View, StyleSheet,TouchableOpacity} from 'react-native';
 import { useRouter } from 'expo-router';
 export default function menuScreen() {
 
@@ -7,8 +7,9 @@ export default function menuScreen() {
     <View style={styles.container}>
       
       <View>
-              <Button title="Logout" onPress={handleLogout}/>
-              <Text>hiiiii</Text>
+              <TouchableOpacity style={styles.logButton} onPress={handleLogout}>
+              <Text style={styles.text}>logout</Text>
+              </TouchableOpacity>
             </View>
     </View>
   );
@@ -20,11 +21,17 @@ export default function menuScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#25292e',
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
   },
   text: {
-    color: '#fff',
+    color: 'black',
+    fontSize:40,
   },
+  logButton:{
+    backgroundColor:'rgb(183, 173, 173)',
+    borderRadius:20,
+    elevation:20,
+  }
 });
