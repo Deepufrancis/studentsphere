@@ -55,8 +55,9 @@ const styles = StyleSheet.create({
         elevation: 8,
         alignItems: "center",
         justifyContent: "center",
-        borderWidth: 1,
-        borderColor: "#E0E0E0", 
+        borderWidth: 1, 
+        height:100,
+        borderColor:"black"
     },
     cardText: {
         fontSize: 18,

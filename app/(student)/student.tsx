@@ -14,9 +14,9 @@ const TeacherDashboard: React.FC = () => {
                 <Text>Register Courses</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.card} onPress={() => router.push("/courses")}>
-                <Text>Assignments</Text>
+                <Text>courses</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.card} onPress={() => router.push("/menu")}>
+            <TouchableOpacity style={styles.card} onPress={() => router.push("/profile")}>
                 <Text>Profile</Text>
             </TouchableOpacity>
 

@@ -31,9 +31,15 @@ export default function Login() {
         body: JSON.stringify({ username, password, role }),
       });
       const data = await response.json();
-      if (response.status===200) {
-        await AsyncStorage.setItem('loggedInUser',username);
-        await AsyncStorage.setItem('userRole',role);
+
+      if (response.status === 200) {
+        await AsyncStorage.setItem('loggedInUser', username);
+        await AsyncStorage.setItem('userRole', role);
+
+        if (role === 'student' && data.studentId) {
+          await AsyncStorage.setItem('studentId', data.studentId);
+        }
+
         router.replace(`/${role}`);
       } else {
         Alert.alert('Error', data.message || 'Login failed.');
@@ -120,6 +126,9 @@ export default function Login() {
     </View>
   );
 }
+
+
+
 
 
 const styles = StyleSheet.create({
