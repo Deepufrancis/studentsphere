@@ -1,86 +1,115 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, ActivityIndicator, Button, Alert } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Button } from "react-native";
+import { API_BASE_URL } from "../constants";
 
 interface Course {
-  _id: string;
+  id: string;
   courseName: string;
-  description: string;
   teacher: string;
+  description: string;
+  schedule: string;
 }
 
-export default function StudentCourseScreen() {
+export default function SCourse() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
   const [registeredCourses, setRegisteredCourses] = useState<string[]>([]);
-  const [studentId, setStudentId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchStudentIdAndCourses = async () => {
-      try {
-        const id = await AsyncStorage.getItem("studentId");
-        if (!id) return;
-        setStudentId(id);
-
-        const [coursesRes, registrationsRes] = await Promise.all([
-          axios.get("http://localhost:5000/api/courses"),
-          axios.get(`http://localhost:5000/api/registrations/${id}`)
-        ]);
-
-        setCourses(coursesRes.data);
-        setRegisteredCourses(registrationsRes.data.map((reg: any) => reg.courseId));
-      } catch (error) {
-        Alert.alert("Error", "Failed to fetch data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStudentIdAndCourses();
-  }, []);
-
-  const handleRegister = async (courseId: string) => {
-    if (!studentId) return;
-
+  const fetchCourses = async () => {
     try {
-      if (registeredCourses.includes(courseId)) {
-        setRegisteredCourses((prev) => prev.filter((id) => id !== courseId));
-        await axios.delete(`http://localhost:5000/api/register/${courseId}/${studentId}`);
-        Alert.alert("Success", "Registration canceled.");
-      } else {
-        setRegisteredCourses((prev) => [...prev, courseId]);
-        await axios.post("http://localhost:5000/api/register", { studentId, courseId });
-        Alert.alert("Success", "Registered successfully.");
-      }
-    } catch {
-      Alert.alert("Error", "Failed to update registration.");
+      setError(null);
+      const response = await fetch(`${API_BASE_URL}/courses`);
+      if (!response.ok) throw new Error("Failed to fetch courses.");
+      const data: Course[] = await response.json();
+      setCourses(data);
+    } catch (err) {
+      setError("Error fetching courses. Please try again.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchCourses();
+  };
+
+  const toggleCourseDetails = (id: string) => {
+    setExpandedCourseId((prev) => (prev === id ? null : id)); // Toggle expansion
+  };
+
+  const handleRegister = async (courseId: string) => {
+    try {
+      const isRegistered = registeredCourses.includes(courseId);
+      const url = isRegistered
+        ? `${API_BASE_URL}/unregister/${courseId}`
+        : `${API_BASE_URL}/register/${courseId}`;
+
+      const response = await fetch(url, { method: "POST" });
+
+      if (!response.ok) throw new Error("Failed to update registration.");
+
+      setRegisteredCourses((prev) =>
+        isRegistered ? prev.filter((id) => id !== courseId) : [...prev, courseId]
+      );
+    } catch (error) {
+      console.error("Error updating registration:", error);
+    }
+  };
+
+  if (loading) {
+    return <ActivityIndicator size="large" color="#007bff" />;
+  }
+
   return (
-    <View style={{ flex: 1, padding: 20 }}>
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : courses.length > 0 ? (
+    <View style={{ flex: 1, padding: 16 }}>
+      {error ? (
+        <Text style={{ color: "red", textAlign: "center" }}>{error}</Text>
+      ) : (
         <FlatList
           data={courses}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item) => item.id}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           renderItem={({ item }) => (
-            <View style={{ marginBottom: 15, padding: 10, borderWidth: 1, borderRadius: 5 }}>
+            <TouchableOpacity
+              onPress={() => toggleCourseDetails(item.id)}
+              style={{
+                backgroundColor: "#f8f9fa",
+                padding: 16,
+                marginBottom: 8,
+                borderRadius: 8,
+                shadowColor: "#000",
+                shadowOpacity: 0.1,
+                shadowOffset: { width: 0, height: 2 },
+                shadowRadius: 4,
+              }}
+            >
               <Text style={{ fontSize: 18, fontWeight: "bold" }}>{item.courseName}</Text>
-              <Text>{item.description}</Text>
-              <Text style={{ fontStyle: "italic" }}>Teacher: {item.teacher}</Text>
-              <Button
-                title={registeredCourses.includes(item._id) ? "Cancel" : "Register"}
-                color={registeredCourses.includes(item._id) ? "red" : "green"}
-                onPress={() => handleRegister(item._id)}
-              />
-            </View>
+              <Text style={{ color: "gray" }}>Teacher: {item.teacher}</Text>
+
+              {expandedCourseId === item.id && ( // Only show details for expanded course
+                <View style={{ marginTop: 10 }}>
+                  <Text>{item.description}</Text>
+                  <Text style={{ fontStyle: "italic", color: "blue" }}>{item.schedule}</Text>
+                  <Button
+                    title={registeredCourses.includes(item.id) ? "Registered" : "Register"}
+                    color={registeredCourses.includes(item.id) ? "green" : "blue"}
+                    onPress={() => handleRegister(item.id)}
+                  />
+                </View>
+              )}
+            </TouchableOpacity>
           )}
         />
-      ) : (
-        <Text>No courses available</Text>
       )}
     </View>
   );

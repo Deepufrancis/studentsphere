@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Text, View, StyleSheet, TouchableOpacity ,Alert} from "react-native";
+import { Text, View, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 
@@ -17,24 +17,24 @@ export default function StudentProfile() {
     };
     loadUserData();
   }, []);
- const handleLogout = async()=>{
+  const handleLogout = async () => {
     Alert.alert(
-      "Logout","Are you sure you want to logout",
+      "Logout", "Are you sure you want to logout",
       [
         {
-          text:"cancel",
-        style:"cancel"
-      },
-      {
-        text:"Logout",
-        onPress:async()=>{
-          await AsyncStorage.clear();
-          router.replace("/");
+          text: "cancel",
+          style: "cancel"
         },
-        style:"destructive",
-      },
-    ]
-  );
+        {
+          text: "Logout",
+          onPress: async () => {
+            await AsyncStorage.clear();
+            router.replace("/");
+          },
+          style: "destructive",
+        },
+      ]
+    );
   };
 
   return (
@@ -44,10 +44,7 @@ export default function StudentProfile() {
         <Text style={styles.label}>Username:</Text>
         <Text style={styles.value}>{username || "N/A"}</Text>
       </View>
-      <View style={styles.infoContainer}>
-        <Text style={styles.label}>Student ID:</Text>
-        <Text style={styles.value}>{studentId || "N/A"}</Text>
-      </View>
+      
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>

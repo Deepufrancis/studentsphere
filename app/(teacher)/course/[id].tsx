@@ -1,65 +1,58 @@
-import React, { useState, useEffect,useLayoutEffect } from "react";
-import { 
-  View, Text, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, StyleSheet 
-} from "react-native";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import axios from "axios";
+import { View, Text, TouchableOpacity, TextInput, Modal, Alert } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../../constants";
 
 interface Course {
   _id: string;
   courseName: string;
   description: string;
-  teacher: string;
 }
 
-const CourseDetails = () => {
-  const { id: courseId } = useLocalSearchParams();
+export default function CourseDetails() {
+  const { id } = useLocalSearchParams();
   const router = useRouter();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [courseName, setCourseName] = useState("");
-  const [description, setDescription] = useState("");
-  const navigation=useNavigation();
+  const [updatedCourseName, setUpdatedCourseName] = useState("");
+  const [updatedDescription, setUpdatedDescription] = useState("");
 
   useEffect(() => {
-    const fetchCourseById = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/courses/${courseId}`);
-        setCourse(response.data);
-        setCourseName(response.data.courseName);
-        setDescription(response.data.description);
-      } catch (err) {
-        setError("Failed to fetch course details. Please try again.");
-      } finally {
+    if (!id || id.toString().length !== 24) {
+      console.error("Invalid Course ID detected:", id);
+      setLoading(false);
+      return;
+    }
+
+    fetch(`${API_BASE_URL}/courses/${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setCourse(data);
+        setUpdatedCourseName(data.courseName);
+        setUpdatedDescription(data.description);
         setLoading(false);
-      }
-    };
-
-    if (courseId) {
-      fetchCourseById();
-    }
-  }, [courseId]);
-
-  useLayoutEffect(() => {
-    if (course) {
-      navigation.setOptions({ title: course.courseName });
-    }
-  }, [navigation, course]);
+      })
+      .catch((err) => {
+        console.error("Error fetching course:", err);
+        setLoading(false);
+      });
+  }, [id]);
 
   const handleUpdate = async () => {
     try {
-      await axios.put(`${API_BASE_URL}/courses/${courseId}`, {
-        courseName,
-        description,
+      await fetch(`${API_BASE_URL}/courses/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseName: updatedCourseName,
+          description: updatedDescription,
+        }),
       });
-      setCourse((prev) => (prev ? { ...prev, courseName, description } : null));
+      setCourse((prev) => prev ? { ...prev, courseName: updatedCourseName, description: updatedDescription } : null);
       setIsModalOpen(false);
-      Alert.alert("Success", "Course updated successfully!");
     } catch (error) {
-      Alert.alert("Error", "Failed to update course.");
+      Alert.alert("Error", "Failed to update course");
     }
   };
 
@@ -70,84 +63,87 @@ const CourseDetails = () => {
         text: "Delete",
         onPress: async () => {
           try {
-            await axios.delete(`${API_BASE_URL}/courses/${courseId}`);
-            router.replace("/courses"); // Go back to course list after deletion
+            await fetch(`${API_BASE_URL}/courses/${id}`, { method: "DELETE" });
+            router.replace("/courses");
           } catch (error) {
-            Alert.alert("Error", "Failed to delete course.");
+            Alert.alert("Error", "Failed to delete course");
           }
         },
       },
     ]);
   };
 
+  if (loading) return <Text>Loading...</Text>;
+  if (!course) return <Text>Course not found</Text>;
+
   return (
-    <View style={styles.container}>
-      {loading ? (
-        <ActivityIndicator size="large" color="blue" />
-      ) : error ? (
-        <Text style={styles.error}>{error}</Text>
-      ) : course ? (
-        <>
-          <Text style={styles.courseTitle}>{course.courseName}</Text>
-          <Text style={styles.description}>{course.description}</Text>
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 16 }}>
+      <View style={{ 
+        width: "90%", 
+        backgroundColor: "#fff", 
+        padding: 20, 
+        borderRadius: 12, 
+        shadowColor: "#000", 
+        shadowOffset: { width: 0, height: 2 }, 
+        shadowOpacity: 0.1, 
+        shadowRadius: 4, 
+        elevation: 5 
+      }}>
+        <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 8 }}>{course.courseName}</Text>
+        <Text style={{ fontSize: 16, color: "#555", marginBottom: 12 }}>ID: {course._id}</Text>
+        <Text style={{ fontSize: 16, marginBottom: 12 }}>{course.description}</Text>
+  
+        <TouchableOpacity 
+          style={{
+            backgroundColor: "#007bff", 
+            paddingVertical: 12, 
+            borderRadius: 8, 
+            alignItems: "center",
+            marginBottom: 10
+          }} 
+          onPress={() => router.push(`/course/${id}/assignments`)}
+        >
+          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>Create Assignment</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => setIsModalOpen(true)} style={styles.editButton}>
-            <Text style={styles.buttonText}>Edit Course</Text>
-          </TouchableOpacity>
+        <TouchableOpacity 
+          style={{ backgroundColor: "#28a745", paddingVertical: 12, borderRadius: 8, alignItems: "center", marginBottom: 10 }}
+          onPress={() => setIsModalOpen(true)}
+        >
+          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>Edit Course</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-            <Text style={styles.buttonText}>Delete Course</Text>
-          </TouchableOpacity>
+        <TouchableOpacity 
+          style={{ backgroundColor: "#dc3545", paddingVertical: 12, borderRadius: 8, alignItems: "center" }}
+          onPress={handleDelete}
+        >
+          <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>Delete Course</Text>
+        </TouchableOpacity>
+      </View>
 
-          <TouchableOpacity style={styles.editButton} onPress={()=>router.push(`/assignments?courseId=${courseId}`)}><Text style={styles.buttonText}>Assignments</Text></TouchableOpacity>
-
-          <Modal visible={isModalOpen} transparent animationType="slide">
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Edit Course</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Course Name"
-                  value={courseName}
-                  onChangeText={setCourseName}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Description"
-                  value={description}
-                  onChangeText={setDescription}
-                />
-                <TouchableOpacity onPress={handleUpdate} style={styles.modalButton}>
-                  <Text style={styles.buttonText}>Update Course</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setIsModalOpen(false)} style={styles.closeButton}>
-                  <Text style={styles.buttonText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-        </>
-      ) : (
-        <Text>No course found.</Text>
-      )}
+      <Modal visible={isModalOpen} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <View style={{ width: "80%", padding: 20, backgroundColor: "#fff", borderRadius: 10 }}>
+            <Text style={{ fontSize: 20, fontWeight: "bold", marginBottom: 10 }}>Edit Course</Text>
+            <TextInput
+              style={{ borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 5 }}
+              value={updatedCourseName}
+              onChangeText={setUpdatedCourseName}
+            />
+            <TextInput
+              style={{ borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 5 }}
+              value={updatedDescription}
+              onChangeText={setUpdatedDescription}
+            />
+            <TouchableOpacity onPress={handleUpdate} style={{ backgroundColor: "#007bff", padding: 10, borderRadius: 5, alignItems: "center" }}>
+              <Text style={{ color: "#fff", fontWeight: "bold" }}>Update Course</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setIsModalOpen(false)} style={{ backgroundColor: "gray", padding: 10, borderRadius: 5, alignItems: "center", marginTop: 10 }}>
+              <Text style={{ color: "#fff", fontWeight: "bold" }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
-};
-
-export default CourseDetails;
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#f8f8f8" },
-  courseTitle: { fontSize: 24, fontWeight: "bold", marginBottom: 10 },
-  description: { fontSize: 16, marginBottom: 20 },
-  editButton: { backgroundColor: "blue", padding: 10, borderRadius: 5, alignItems: "center", marginBottom: 10 },
-  deleteButton: { backgroundColor: "red", padding: 10, borderRadius: 5, alignItems: "center",marginBottom:10 },
-  buttonText: { color: "#fff", fontWeight: "bold" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
-  modalContent: { width: "80%", padding: 20, backgroundColor: "#fff", borderRadius: 10 },
-  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 10 },
-  input: { borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 5 },
-  modalButton: { backgroundColor: "blue", padding: 10, borderRadius: 5, alignItems: "center" },
-  closeButton: { backgroundColor: "gray", padding: 10, borderRadius: 5, alignItems: "center", marginTop: 10 },
-  error: { color: "red", marginBottom: 10 },
-});
+}

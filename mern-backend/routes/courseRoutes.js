@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose=require('mongoose')
 const Course = require('../models/course.model');
 const router = express.Router();
 
@@ -70,6 +71,28 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: "Course deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
+  }
+});
+
+
+router.get("/:id", async (req, res) => {
+  const courseId = req.params.id;
+  console.log("Received Course ID:", courseId);
+
+  if (!mongoose.Types.ObjectId.isValid(courseId)) {
+    return res.status(400).json({ error: "Invalid Course ID" });
+  }
+
+  try {
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+
+    res.json(course);
+  } catch (error) {
+    console.error("Error fetching course:", error);
+    res.status(500).json({ error: "Internal Server Error", details: error.message });
   }
 });
 

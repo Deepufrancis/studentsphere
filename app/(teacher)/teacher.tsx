@@ -1,67 +1,83 @@
 import React from "react";
 import { useRouter } from "expo-router";
-import { View, Text, TouchableOpacity, StyleSheet, Button } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
+const { width } = Dimensions.get("window");
+const itemSize = width / 2 - 30;
 
 const TeacherDashboard: React.FC = () => {
     const router = useRouter();
+
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>
-                Teacher Dashboard
-            </Text>
-            <TouchableOpacity style={styles.card} onPress={() => router.push("/courses")}>
-                <Text>Go to Courses</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.card} onPress={() => router.push("/assignments")}>
-                <Text>Assignments</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.card} onPress={() => router.push("/menu")}>
-                <Text>Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.card} onPress={() => router.push("/courseDetail")}>
-                <Text>details</Text>
-            </TouchableOpacity>
-
+            <Text style={styles.header}>Teacher Dashboard</Text>
+            <View style={styles.grid}>
+                <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => router.push("/courses")}> 
+                    <Ionicons name="book-outline" size={32} color="#000" />
+                    <Text style={styles.cardText}>Courses</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => router.push("/assignments")}> 
+                    <Ionicons name="clipboard-outline" size={32} color="#000" />
+                    <Text style={styles.cardText}>Assignments</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => router.push("/menu")}> 
+                    <Ionicons name="person-circle-outline" size={32} color="#000" />
+                    <Text style={styles.cardText}>Profile</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => router.push("/courseDetail")}> 
+                    <Ionicons name="information-circle-outline" size={32} color="#000" />
+                    <Text style={styles.cardText}>Details</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
-export default TeacherDashboard;
 
+export default TeacherDashboard;
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 20,
-        backgroundColor: "#F5F5F5",
+        backgroundColor: "#EAEAEA",
+        alignItems: "center",
+        justifyContent: "center",
     },
     header: {
-        textAlign: "center",
-        fontSize: 26,
+        fontSize: 28,
         fontWeight: "bold",
-        color: "#222",
+        color: "#333",
         marginVertical: 15,
-        letterSpacing: 1, 
+        letterSpacing: 1.2,
+        textTransform: "uppercase",
+    },
+    grid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        justifyContent: "space-between",
+        width: "100%",
     },
     card: {
         backgroundColor: "#fff",
-        borderRadius: 15,
+        borderRadius: 10,
         padding: 20,
-        marginVertical: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-        elevation: 8,
-        alignItems: "center",
+        width: itemSize,
+        height: itemSize,
         justifyContent: "center",
-        borderWidth: 1, 
-        height:100,
-        borderColor:"black"
+        alignItems: "center",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        elevation: 3,
+        marginVertical: 10,
     },
     cardText: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: "600",
-        color: "#333",
-    }
+        color: "#000",
+        marginTop: 10,
+        textTransform: "capitalize",
+    },
 });

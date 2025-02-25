@@ -11,7 +11,7 @@ const TeacherDashboard: React.FC = () => {
                 Student Dashboard
             </Text>
             <TouchableOpacity style={styles.card} onPress={() => router.push("/s_course")}>
-                <Text>Register Courses</Text>
+                <Text>course management</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.card} onPress={() => router.push("/courses")}>
                 <Text>courses</Text>
@@ -53,7 +53,8 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         borderWidth: 1,
-        borderColor: "#E0E0E0", 
+        borderColor: "#E0E0E0",
+        height:100, 
     },
     cardText: {
         fontSize: 18,
