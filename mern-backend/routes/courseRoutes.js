@@ -3,7 +3,7 @@ const mongoose=require('mongoose')
 const Course = require('../models/course.model');
 const router = express.Router();
 
-// Add Course
+
 router.post('/', async (req, res) => {
   try {
     const { courseName, description, teacher } = req.body;
@@ -20,12 +20,12 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get Courses (Filtered by Teacher)
+
 router.get('/', async (req, res) => {
   try {
-    const { teacher } = req.query; // Get teacher from query params
+    const { teacher } = req.query;
 
-    const filter = teacher ? { teacher } : {}; // Filter courses if teacher exists
+    const filter = teacher ? { teacher } : {}; 
     const courses = await Course.find(filter);
 
     res.status(200).json(courses);
@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Update Course
+
 router.put('/:id', async (req, res) => {
   try {
     const { courseName, description } = req.body;
@@ -77,7 +77,7 @@ router.delete('/:id', async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   const courseId = req.params.id;
-  console.log("Received Course ID:", courseId);
+  
 
   if (!mongoose.Types.ObjectId.isValid(courseId)) {
     return res.status(400).json({ error: "Invalid Course ID" });

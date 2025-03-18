@@ -1,10 +1,12 @@
-import { Stack } from 'expo-router';
+import { Slot } from "expo-router";
+import StudentNavbar from "../components/studentNavbar";
+import { View } from "react-native";
+
 export default function Layout() {
   return (
-    <Stack>
-      <Stack.Screen name="student"/>
-      <Stack.Screen name="s_courses"/>
-      <Stack.Screen name="menu"/>
-    </Stack>
+    <View style={{ flex: 1 }}>
+      <StudentNavbar />
+      <Slot />
+    </View>
   );
 }

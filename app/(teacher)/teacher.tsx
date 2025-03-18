@@ -1,83 +1,135 @@
-import React from "react";
 import { useRouter } from "expo-router";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Dimensions,
+  StyleSheet,
+} from "react-native";
+import { useState, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useFonts, Poppins_500Medium, Poppins_700Bold } from "@expo-google-fonts/poppins";
 
-const { width } = Dimensions.get("window");
-const itemSize = width / 2 - 30;
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
-const TeacherDashboard: React.FC = () => {
-    const router = useRouter();
+export default function Dashboard() {
+  const router = useRouter();
+  const [time, setTime] = useState(new Date().toLocaleTimeString());
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.header}>Teacher Dashboard</Text>
-            <View style={styles.grid}>
-                <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => router.push("/courses")}> 
-                    <Ionicons name="book-outline" size={32} color="#000" />
-                    <Text style={styles.cardText}>Courses</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => router.push("/assignments")}> 
-                    <Ionicons name="clipboard-outline" size={32} color="#000" />
-                    <Text style={styles.cardText}>Assignments</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => router.push("/menu")}> 
-                    <Ionicons name="person-circle-outline" size={32} color="#000" />
-                    <Text style={styles.cardText}>Profile</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => router.push("/courseDetail")}> 
-                    <Ionicons name="information-circle-outline" size={32} color="#000" />
-                    <Text style={styles.cardText}>Details</Text>
-                </TouchableOpacity>
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTime(new Date().toLocaleTimeString());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const [fontsLoaded] = useFonts({
+    Poppins_500Medium,
+    Poppins_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  const today = new Date();
+  const day = today.toLocaleDateString("en-US", { weekday: "long" });
+  const date = today.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.dashboardTitle}>Teacher Dashboard</Text>
+      <Text style={styles.dateText}>
+        {day}, {date}
+      </Text>
+      <Text style={styles.timeText}>{time}</Text>
+
+      <ScrollView contentContainerStyle={styles.cardsContainer}>
+        {menuItems.map((item) => (
+          <TouchableOpacity key={item.label} style={styles.card} onPress={() => router.push(item.route)}>
+            <View style={styles.cardBackground}>
+              <Ionicons name={item.icon} size={40} color="black" />
+              <Text style={styles.cardText}>{item.label}</Text>
             </View>
-        </View>
-    );
-};
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
 
-export default TeacherDashboard;
+const menuItems = [
+  { label: "Courses", icon: "book-outline", route: "/courses" },
+  { label: "Assignments", icon: "create-outline", route: "/assignments" },
+  { label: "Requests", icon: "people-outline", route: "/Requests" },
+  { label: "Calendar", icon: "calendar-outline", route: "/calendar" },
+  { label: "Discussions", icon: "chatbubbles-outline", route: "/discussions" },
+  { label: "Attendance", icon: "checkmark-circle-outline", route: "/attendance" },
+  { label: "Exams", icon: "clipboard-outline", route: "/exams" },
+  { label: "Resources", icon: "document-text-outline", route: "/resources" },
+];
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-        backgroundColor: "#EAEAEA",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    header: {
-        fontSize: 28,
-        fontWeight: "bold",
-        color: "#333",
-        marginVertical: 15,
-        letterSpacing: 1.2,
-        textTransform: "uppercase",
-    },
-    grid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "space-between",
-        width: "100%",
-    },
-    card: {
-        backgroundColor: "#fff",
-        borderRadius: 10,
-        padding: 20,
-        width: itemSize,
-        height: itemSize,
-        justifyContent: "center",
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 3,
-        marginVertical: 10,
-    },
-    cardText: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: "#000",
-        marginTop: 10,
-        textTransform: "capitalize",
-    },
+  container: {
+    flex: 1,
+    backgroundColor: "#FFF",
+    paddingTop: 50,
+    paddingHorizontal: 20,
+  },
+  cardsContainer: {
+    flexGrow: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    paddingBottom: 20,
+  },
+  card: {
+    width: "48%",
+    marginVertical: 12,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  cardBackground: {
+    paddingVertical: 30,
+    alignItems: "center",
+    borderRadius: 16,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#DDD",
+  },
+  dashboardTitle: {
+    fontSize: 26,
+    fontFamily: "Poppins_700Bold",
+    color: "#000",
+    textAlign: "center",
+    marginBottom: 5,
+  },
+  dateText: {
+    fontSize: 18,
+    fontFamily: "Poppins_500Medium",
+    color: "#555",
+    textAlign: "center",
+  },
+  timeText: {
+    fontSize: 16,
+    fontFamily: "Poppins_500Medium",
+    color: "#777",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  cardText: {
+    marginTop: 10,
+    fontSize: 16,
+    fontFamily: "Poppins_500Medium",
+    color: "#000",
+  },
 });
+

@@ -7,11 +7,14 @@ import {
   TouchableOpacity,
   Modal,
   StyleSheet,
+  ToastAndroid,
+  Image,
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "../constants";
 import { useRouter } from "expo-router";
+import { Ionicons } from '@expo/vector-icons';
 
 interface Course {
   _id: string;
@@ -27,7 +30,6 @@ const TeacherCourses: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const router = useRouter();
@@ -59,7 +61,6 @@ const TeacherCourses: React.FC = () => {
 
   const handleSubmit = async () => {
     setError(null);
-    setSuccess(null);
 
     if (!username) {
       return;
@@ -71,13 +72,13 @@ const TeacherCourses: React.FC = () => {
         description,
         teacher: username,
       });
-      setSuccess("Course added successfully!");
+      ToastAndroid.show('Course added successfully!', ToastAndroid.SHORT);
       setCourseName("");
       setDescription("");
       setIsModalOpen(false);
       fetchCourses(username);
     } catch (error) {
-      setError("Error adding course. Please try again.");
+      ToastAndroid.show('Error adding course. Please try again.', ToastAndroid.SHORT);
     }
   };
 
@@ -89,14 +90,21 @@ const TeacherCourses: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome, {username}</Text>
+      <View style={styles.welcomeContainer}>
+        <Text style={styles.welcomeText}>Welcome,</Text>
+        <Text style={styles.usernameText}>{username}</Text>
+      </View>
 
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search Courses..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-      />
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search Your Courses..."
+          placeholderTextColor="#666"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
 
       {loading && <Text>Loading courses...</Text>}
       {error && <Text style={styles.error}>{error}</Text>}
@@ -111,19 +119,20 @@ const TeacherCourses: React.FC = () => {
             onPress={() => router.push(`/course/${course._id}`)}
             style={styles.courseCard}
           >
-            <Text style={styles.courseTitle}>{course.courseName}</Text>
-            <Text>{course.description}</Text>
+            <View style={styles.courseContent}>
+              <Text style={styles.courseTitle}>{course.courseName}</Text>
+              <Text>{course.description}</Text>
+            </View>
+            <View style={styles.forwardButton}>
+              <Ionicons name="chevron-forward" size={24} color="#007BFF" />
+            </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
       <TouchableOpacity
-        onPress={() => {
-          setCourseName("");
-          setDescription("");
-          setIsModalOpen(true);
-        }}
         style={styles.addButton}
+        onPress={() => setIsModalOpen(true)}
       >
         <Text style={styles.addButtonText}>+</Text>
       </TouchableOpacity>
@@ -132,7 +141,6 @@ const TeacherCourses: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add Course</Text>
-            {success && <Text style={styles.success}>{success}</Text>}
             <TextInput
               style={styles.input}
               placeholder="Course Name"
@@ -165,7 +173,21 @@ export default TeacherCourses;
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: "#f8f8f8" },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 5 },
+  welcomeContainer: {
+    marginBottom: 20,
+    paddingVertical: 5,
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  usernameText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginTop: 2,
+  },
   courseList: { flex: 1 },
   courseCard: {
     backgroundColor: "#fff",
@@ -175,6 +197,23 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderColor: "black",
     borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  courseContent: {
+    flex: 1,
+    marginRight: 10,
+  },
+  forwardButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f8ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#007BFF',
   },
   courseTitle: { fontSize: 18, fontWeight: "bold" },
   addButton: {
@@ -189,12 +228,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     elevation: 5,
   },
-  searchInput: { 
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginVertical: 15,
+    height: 48,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 10
+    borderColor: '#e0e0e0',
+  },
+  searchIcon: {
+    marginRight: 12,
+    opacity: 0.6,
+  },
+  searchInput: { 
+    flex: 1,
+    fontSize: 15,
+    color: '#2c3e50',
+    fontWeight: '500',
+    paddingVertical: 8,
   },
   addButtonText: { fontSize: 30, color: "#fff" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
@@ -205,5 +267,4 @@ const styles = StyleSheet.create({
   closeButton: { backgroundColor: "gray", padding: 10, borderRadius: 5, alignItems: "center", marginTop: 10 },
   buttonText: { color: "#fff", fontWeight: "bold" },
   error: { color: "red", marginBottom: 10 },
-  success: { color: "green", marginBottom: 10 },
 });
