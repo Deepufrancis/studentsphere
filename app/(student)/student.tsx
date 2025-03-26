@@ -37,12 +37,17 @@ export default function Dashboard() {
   return (
     <View style={styles.mainContainer}>
       <View style={styles.cardContainer}>
-        <View style={styles.divider} />
         <Text style={styles.dashboardTitle}>Student Dashboard</Text>
-        {username && <Text style={styles.welcomeText}>Welcome, {username}!</Text>}
+        {username && <Text style={styles.welcomeText}>Welcome back, {username}</Text>}
+        <View style={styles.divider} />
         <View style={styles.dateContainer}>
-          <Ionicons name="calendar-outline" size={24} color="black" style={{ marginRight: 10 }} />
-          <Text style={styles.dateText}>{day}, {date}</Text>
+          <View style={styles.dateWrapper}>
+            <Ionicons name="calendar-outline" size={28} color="#4a5568" style={styles.calendarIcon} />
+            <View>
+              <Text style={styles.dayText}>{day}</Text>
+              <Text style={styles.dateText}>{date}</Text>
+            </View>
+          </View>
         </View>
         
         {/* Grid Layout */}
@@ -76,7 +81,10 @@ export default function Dashboard() {
             </View>
 
             <View style={styles.gridRow}>
-              <TouchableOpacity style={styles.gridItem} onPress={() => router.push("./discussions")}>
+              <TouchableOpacity style={styles.gridItem} onPress={() => router.push({
+                pathname: "/(chat)/chatHome",
+                params: { selectedRole: "student" }
+              })}>
                 <Ionicons name="chatbubbles-outline" size={40} color="black" />
                 <Text style={styles.gridText}>Discussions</Text>
               </TouchableOpacity>
@@ -123,28 +131,41 @@ const styles = StyleSheet.create({
       elevation: 8,
     },
     dateContainer: {
-      flexDirection: "row",
-      alignItems: "center",
       padding: 16,
-      backgroundColor: "#f8f9fa",
-      borderRadius: 12,
-      marginBottom: 20,
+      backgroundColor: "#f8fafc",
+      borderRadius: 16,
+      marginBottom: 24,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
+      shadowOpacity: 0.08,
       shadowRadius: 4,
-      elevation: 2,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: "rgba(226, 232, 240, 0.8)",
+    },
+    dateWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    calendarIcon: {
+      marginRight: 16,
+    },
+    dayText: {
+      fontSize: 18,
+      fontWeight: "600",
+      color: "#2d3748",
+      marginBottom: 4,
     },
     dateText: {
-      fontSize: 20,
-      fontWeight: "bold",
-      color: "#333",
+      fontSize: 16,
+      color: "#4a5568",
     },
     welcomeText: {
-      fontSize: 18,
-      color: "#666",
-      marginBottom: 16,
+      fontSize: 20,
+      color: "#2d3748",
+      marginBottom: 20,
       textAlign: "center",
+      fontWeight: "500",
     },
     container: {
       flex: 1,
@@ -179,16 +200,19 @@ const styles = StyleSheet.create({
       marginRight: 15,
     },
     divider: {
-      height: 1,
-      backgroundColor: "#ddd",
-      marginVertical: 15,
+      height: 2,
+      backgroundColor: "#e2e8f0",
+      marginBottom: 24,
+      width: "90%",
+      alignSelf: "center",
     },
     dashboardTitle: {
-      fontSize: 22,
+      fontSize: 28,
       fontWeight: "bold",
       textAlign: "center",
-      color: "#333",
-      marginBottom: 15,
+      color: "#1a365d",
+      marginVertical: 16,
+      letterSpacing: 0.5,
     },
     gridContainer: {
       alignItems: "center",
@@ -209,15 +233,15 @@ const styles = StyleSheet.create({
       backgroundColor: "#ffffff",
       justifyContent: "center",
       alignItems: "center",
-      borderRadius: 15,
+      borderRadius: 12,
       marginHorizontal: "1.5%",
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      elevation: 6,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.12,
+      shadowRadius: 6,
+      elevation: 5,
       borderWidth: 1,
-      borderColor: "rgba(0,0,0,0.05)",
+      borderColor: "rgba(226, 232, 240, 0.9)",
     },
     drawer: {
       position: "absolute",
@@ -255,16 +279,12 @@ const styles = StyleSheet.create({
         marginRight:15
     },
     gridText: {
-      fontSize: 16,
+      fontSize: 15,
       fontWeight: "600",
       marginTop: 12,
-      color: "#2c3e50",
+      color: "#334155",
       textAlign: "center",
-      letterSpacing: 0.3,
-      paddingHorizontal: 8,
-      textShadowColor: 'rgba(0, 0, 0, 0.1)',
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 2,
+      letterSpacing: 0.2,
     },
     scrollContainer: {
       flexGrow: 1,

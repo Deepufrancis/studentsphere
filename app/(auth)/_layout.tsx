@@ -6,9 +6,7 @@ export default function Layout() {
             <Stack.Screen name="StudentLogin" options={{headerShown:false}}/>
             <Stack.Screen name="SignUpPage" options={{headerShown:false}}/>
             <Stack.Screen name="TeacherLogin" options={{headerShown:false}}/>
-            
-
-
+            <Stack.Screen name="login" options={{headerShown:false}}/>
         </Stack>
     )
 }

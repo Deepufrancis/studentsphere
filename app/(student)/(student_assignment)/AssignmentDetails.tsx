@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Linking,
 } from "react-native";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -26,6 +27,11 @@ interface Assignment {
   title: string;
   description: string;
   dueDate: string;
+  submissionDetails?: {
+    submittedAt: string;
+    fileName: string;
+    fileUrl: string;
+  };
 }
 
 const formatDate = (dateString: string) => {
@@ -46,6 +52,7 @@ export default function AssignmentDetails() {
   const [file, setFile] = useState<any>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [alreadyUploaded, setAlreadyUploaded] = useState(false);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
 
   useEffect(() => {
     getUserData();
@@ -124,6 +131,16 @@ export default function AssignmentDetails() {
         const data = await response.json();
         if (data.uploaded) {
           setAlreadyUploaded(true);
+          setUploadedFileUrl(data.fileUrl);
+          // Update assignment with submission details
+          setAssignment(prev => prev ? {
+            ...prev,
+            submissionDetails: {
+              submittedAt: data.submittedAt,
+              fileName: data.fileName,
+              fileUrl: data.fileUrl
+            }
+          } : null);
         }
       }
     } catch (error) {
@@ -212,24 +229,49 @@ export default function AssignmentDetails() {
     }
   };
 
+  const viewUploadedAssignment = () => {
+    if (uploadedFileUrl) {
+      // Open the PDF in device's default viewer
+      Linking.openURL(uploadedFileUrl);
+    }
+  };
+
   return (
     <View style={styles.scrollContainer}>
       <ScrollView style={styles.mainContainer}>
         <View style={styles.container}>
           {assignment ? (
-            <>
+            <View style={styles.assignmentCard}>
               <Text style={styles.title}>{assignment.title}</Text>
               <Text style={styles.description}>{assignment.description}</Text>
               <Text style={styles.dueDate}>Due: {new Date(assignment.dueDate).toDateString()}</Text>
-            </>
+              {assignment.submissionDetails && (
+                <View style={styles.submissionDetails}>
+                  <Text style={styles.submittedText}>
+                    Submitted on: {new Date(assignment.submissionDetails.submittedAt).toLocaleString()}
+                  </Text>
+                  <Text style={styles.submittedFile}>
+                    File: {assignment.submissionDetails.fileName}
+                  </Text>
+                </View>
+              )}
+            </View>
           ) : (
-            <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color="#007bff" />
           )}
 
-          <View style={styles.container}>
-            <Text style={styles.title}>Upload Assignment</Text>
+          <View style={styles.uploadSection}>
+            <Text style={styles.sectionTitle}>Assignment Submission</Text>
             {alreadyUploaded ? (
-              <Text style={styles.uploadedText}>Assignment already uploaded</Text>
+              <View style={styles.uploadedContainer}>
+                <Text style={styles.uploadedText}>Assignment submitted successfully</Text>
+                <TouchableOpacity 
+                  style={styles.viewButton} 
+                  onPress={viewUploadedAssignment}
+                >
+                  <Text style={styles.viewButtonText}>View Submission</Text>
+                </TouchableOpacity>
+              </View>
             ) : file ? (
               <View style={styles.fileContainer}>
                 <Text style={styles.fileName}>{file.name}</Text>
@@ -434,5 +476,61 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
     marginTop: 10,
+  },
+  assignmentCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  uploadSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  uploadedContainer: {
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#e8f5e9',
+    borderRadius: 8,
+  },
+  viewButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  viewButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  submissionDetails: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#e8f5e9',
+    borderRadius: 8,
+  },
+  submittedText: {
+    color: '#2e7d32',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  submittedFile: {
+    color: '#1b5e20',
+    fontSize: 14,
+    marginTop: 5,
   },
 });

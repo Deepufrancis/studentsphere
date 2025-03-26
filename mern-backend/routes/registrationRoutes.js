@@ -5,6 +5,41 @@ const Course = require("../models/course.model");
 const User = require("../models/User");
 const Notification = require("../models/notification");
 
+
+
+/**
+ * @swagger
+ * /api/register:
+ *   post:
+ *     summary: Register a new user
+ *     description: Creates a new user account (teacher or student).
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *               - role
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: "johndoe"
+ *               password:
+ *                 type: string
+ *                 example: "securepassword"
+ *               role:
+ *                 type: string
+ *                 enum: ["teacher", "student"]
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *       400:
+ *         description: Invalid input
+ */
 router.post("/", async (req, res) => {
   try {
     const { username, courseId } = req.body;
@@ -202,12 +237,24 @@ router.delete("/reject/:id", async (req, res) => {
   }
 });
 
+router.delete("/cancel/:username/:courseId", async (req, res) => {
+  try {
+    const { username, courseId } = req.params;
+    const registration = await Registration.findOneAndDelete({ 
+      username, 
+      course: courseId,
+      status: "pending" 
+    });
 
+    if (!registration) {
+      return res.status(404).json({ message: "Pending registration not found." });
+    }
 
-  
- 
-  
- 
-
+    res.json({ message: "Registration cancelled successfully." });
+  } catch (error) {
+    console.error("Error cancelling registration:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 module.exports = router;

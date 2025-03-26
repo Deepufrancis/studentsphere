@@ -51,6 +51,24 @@ export default function NotificationScreen() {
   };
 
   const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchNotifications();
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: "red" }}>{error}</Text>
+      </View>
+    );
   }
 
   return (
@@ -63,6 +81,12 @@ export default function NotificationScreen() {
       ) : (
         <FlatList
           data={notifications}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
             <View style={{ 

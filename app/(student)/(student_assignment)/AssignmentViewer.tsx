@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { API_BASE_URL } from '../../constants';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Course {
   _id: string;
@@ -67,21 +68,35 @@ const AssignmentViewer = () => {
     <View style={styles.container}>
       <Text style={styles.welcome}>Welcome, {username}</Text>
 
-      <Picker
-        selectedValue={selectedCourse}
-        onValueChange={(itemValue) => setSelectedCourse(itemValue)}
-        style={styles.picker}
-      >
-        <Picker.Item label="Select a Course" value={null} />
-        {courses.map((course) => (
-          <Picker.Item key={course._id} label={course.courseName} value={course._id} />
-        ))}
-      </Picker>
+      <View style={styles.courseSection}>
+        <Text style={styles.sectionTitle}>Select Course</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={selectedCourse}
+            onValueChange={(itemValue) => setSelectedCourse(itemValue)}
+            style={styles.picker}
+            dropdownIconColor="#4a5568"
+          >
+            <Picker.Item 
+              label="Choose a course" 
+              value={null} 
+              style={styles.pickerPlaceholder}
+            />
+            {courses.map((course) => (
+              <Picker.Item 
+                key={course._id} 
+                label={course.courseName} 
+                value={course._id}
+                style={styles.pickerItem}
+              />
+            ))}
+          </Picker>
+        </View>
+      </View>
 
       {selectedCourse && (
         <Text style={styles.selectedCourse}>
-          Selected Course: {courses.find((c) => c._id === selectedCourse)?.courseName}  
-          {"\n"}Course ID: {selectedCourse}
+          {courses.find((c) => c._id === selectedCourse)?.courseName}
         </Text>
       )}
 
@@ -90,12 +105,12 @@ const AssignmentViewer = () => {
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.assignmentCard}
+            style={styles.assignmentCardWrapper}
             onPress={() =>
               router.push({
                 pathname: '/AssignmentDetails',
                 params: {
-                  id:item._id,
+                  id: item._id,
                   title: item.title,
                   description: item.description,
                   dueDate: item.dueDate,
@@ -103,34 +118,103 @@ const AssignmentViewer = () => {
               })
             }
           >
-            <Text style={styles.assignmentTitle}>{item.title}</Text>
-            <Text style={styles.assignmentDescription}>{item.description}</Text>
-            <Text style={styles.assignmentDueDate}>Due: {new Date(item.dueDate).toDateString()}</Text>
+            <LinearGradient
+              colors={['#ffffff', '#f7f9fc']}
+              style={styles.assignmentCard}
+            >
+              <Text style={styles.assignmentTitle}>{item.title}</Text>
+              <Text style={styles.assignmentDescription}>{item.description}</Text>
+              <Text style={styles.assignmentDueDate}>Due: {new Date(item.dueDate).toDateString()}</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#f8f8f8' },
-  welcome: { fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
-  picker: { height: 50, backgroundColor: '#fff', marginBottom: 10 },
-  selectedCourse: { fontSize: 16, marginBottom: 10, fontWeight: 'bold' },
-  assignmentCard: {
-    padding: 15,
-    backgroundColor: '#fff',
-    marginBottom: 10,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#f8f9ff',
   },
-  assignmentTitle: { fontSize: 18, fontWeight: 'bold' },
-  assignmentDescription: { fontSize: 14, color: '#777' },
-  assignmentDueDate: { fontSize: 14, marginTop: 5, color: '#555' },
+  welcome: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginBottom: 25,
+    color: '#1a202c',
+  },
+  courseSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#4a5568',
+    marginBottom: 8,
+  },
+  pickerContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  picker: {
+    height: 48,
+  },
+  pickerPlaceholder: {
+    color: '#a0aec0',
+  },
+  pickerItem: {
+    fontSize: 16,
+    color: '#2d3748',
+  },
+  selectedCourse: {
+    fontSize: 18,
+    marginBottom: 20,
+    fontWeight: '600',
+    color: '#2d3748',
+    borderLeftWidth: 3,
+    borderLeftColor: '#4a5568',
+    paddingLeft: 10,
+  },
+  assignmentCardWrapper: {
+    marginBottom: 12,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  assignmentCard: {
+    padding: 18,
+    borderRadius: 16,
+  },
+  assignmentTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2d3748',
+    marginBottom: 8,
+  },
+  assignmentDescription: {
+    fontSize: 14,
+    color: '#718096',
+    marginBottom: 10,
+    lineHeight: 20,
+  },
+  assignmentDueDate: {
+    fontSize: 14,
+    color: '#4a5568',
+    fontWeight: '500',
+  },
 });
 
 export default AssignmentViewer;

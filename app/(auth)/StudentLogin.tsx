@@ -5,7 +5,7 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
+  Modal,
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -19,11 +19,15 @@ export default function StudentLogin() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const router = useRouter();
 
   const handleLogin = async () => {
     if (!username || !password) {
-      return Alert.alert("Error", "Please fill all fields.");
+      setErrorMessage("Please fill all fields.");
+      setModalVisible(true);
+      return;
     }
     setIsLoading(true);
     try {
@@ -51,18 +55,39 @@ export default function StudentLogin() {
 
         router.replace("/student");
       } else {
-        Alert.alert("Error", data.message || "Login failed.");
+        setErrorMessage(data.message || "Login failed.");
+        setModalVisible(true);
       }
     } catch (error) {
-      Alert.alert("Error", "Network error. Please try again later.");
+      setErrorMessage("Network error. Please try again later.");
+      setModalVisible(true);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <LinearGradient colors={["#808080", "#FFFFFF"]} style={styles.background}>
-      <View style={styles.container}>
+    <LinearGradient colors={["#1a237e", "#534bae", "#ffffff"]} style={styles.background}>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Error</Text>
+            <Text style={styles.modalMessage}>{errorMessage}</Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <View style={styles.contentContainer}>
         <Text style={styles.title}>Student Login</Text>
         <TextInput
           style={styles.input}
@@ -86,17 +111,18 @@ export default function StudentLogin() {
           </TouchableOpacity>
         </View>
         {isLoading ? (
-          <ActivityIndicator size="large" color="#007bff" />
+          <ActivityIndicator size="large" color="#1a237e" />
         ) : (
           <TouchableOpacity onPress={handleLogin} style={styles.loginButtonContainer}>
             <LinearGradient
-              colors={["#007AFF", "#0051A3"]}
+              colors={["#1a237e", "#534bae"]}
               style={styles.loginButton}
             >
               <Text style={styles.loginButtonText}>Login</Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
+        
       </View>
     </LinearGradient>
   );
@@ -106,16 +132,31 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
   },
-  container: {
+  contentContainer: {
     flex: 1,
+    margin: 16,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   title: {
-    fontSize: 30,
+    fontSize: 40,
+    color: '#1a237e',
     fontFamily: "Poppins_700Bold",
     marginBottom: 40,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   input: {
     width: "100%",
@@ -144,17 +185,74 @@ const styles = StyleSheet.create({
   },
   loginButtonContainer: {
     width: "100%",
-    borderRadius: 25,
+    borderRadius: 16,
     overflow: "hidden",
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
   loginButton: {
     width: "100%",
-    padding: 16,
+    padding: 18,
     alignItems: "center",
+    borderRadius: 16,
   },
   loginButtonText: {
     color: "#fff",
     fontSize: 18,
     fontFamily: "Poppins_700Bold",
+    letterSpacing: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins_600SemiBold',
+    marginBottom: 10,
+    color: '#1a237e',
+  },
+  modalMessage: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+    fontFamily: 'Poppins_400Regular',
+    color: '#333',
+  },
+  modalButton: {
+    backgroundColor: '#1a237e',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 12,
+    width: '100%',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'Poppins_600SemiBold',
+    textAlign: 'center',
   },
 });

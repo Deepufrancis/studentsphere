@@ -1,8 +1,7 @@
-import { View, Text, TouchableOpacity, Animated, Dimensions, StyleSheet, TouchableWithoutFeedback } from "react-native";
+import { View, Text, TouchableOpacity, Animated, Dimensions, StyleSheet } from "react-native";
 import { useState, useRef } from "react";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import Help from "../help";
 
 const screenHeight = Dimensions.get("window").height;
 
@@ -30,7 +29,6 @@ export default function TeacherNavbar() {
 
   return (
     <View style={styles.container}>
-      {/* Navbar */}
       <View style={styles.navbar}>
         <TouchableOpacity onPress={toggleDrawer}>
           <Ionicons name="menu" size={30} color="black" />
@@ -38,15 +36,13 @@ export default function TeacherNavbar() {
 
         <View style={styles.navIcons}>
           <TouchableOpacity onPress={() => router.push("/notifications")}>
-            <Ionicons name="notifications-outline" size={30} color="black" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push("/profile")}>
+          <TouchableOpacity onPress={() => router.push("/teacherProfile")}>
             <Ionicons name="person-circle-outline" size={35} color="black" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Fullscreen Overlay */}
       {isDrawerOpen && (
         <TouchableOpacity 
           style={styles.overlay} 
@@ -55,7 +51,6 @@ export default function TeacherNavbar() {
         />
       )}
 
-      {/* Animated Drawer */}
       <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
         <TouchableOpacity onPress={toggleDrawer} style={styles.closeButton}>
           <Ionicons name="close" size={30} color="black" />
@@ -168,5 +163,9 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     textAlign: "center",
+  },
+  themeButton: {
+    padding: 8,
+    borderRadius: 20,
   },
 });

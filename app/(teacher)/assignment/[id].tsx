@@ -38,6 +38,10 @@ export default function AssignmentPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [day, setDay] = useState(new Date().getDate());
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (!courseId) {
@@ -93,6 +97,67 @@ export default function AssignmentPage() {
       .catch(() => alert("Failed to add assignment"));
   };
 
+  const handleEdit = (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    const date = new Date(assignment.dueDate);
+    setTitle(assignment.title);
+    setDescription(assignment.description);
+    setYear(date.getFullYear());
+    setMonth(date.getMonth() + 1);
+    setDay(date.getDate());
+    setEditModalVisible(true);
+  };
+
+  const handleDelete = async (assignmentId: string) => {
+    setAssignmentToDelete(assignmentId);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!assignmentToDelete) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/assignments/${assignmentToDelete}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        fetchAssignments();
+      } else {
+        alert('Failed to delete assignment');
+      }
+    } catch (error) {
+      alert('Error deleting assignment');
+    }
+    setDeleteModalVisible(false);
+    setAssignmentToDelete(null);
+  };
+
+  const updateAssignment = async () => {
+    if (!selectedAssignment) return;
+
+    const dueDate = `${year}-${month.toString().padStart(2, "0")}-${day
+      .toString()
+      .padStart(2, "0")}`;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/assignments/${selectedAssignment._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description, dueDate }),
+      });
+
+      if (response.ok) {
+        setEditModalVisible(false);
+        setSelectedAssignment(null);
+        fetchAssignments();
+      } else {
+        alert('Failed to update assignment');
+      }
+    } catch (error) {
+      alert('Error updating assignment');
+    }
+  };
+
   if (loading) return <ActivityIndicator size="large" />;
   if (error) return <Text>{error}</Text>;
 
@@ -112,6 +177,20 @@ export default function AssignmentPage() {
             <Text style={styles.assignmentDate}>
               Due Date: {new Date(item.dueDate).toISOString().split("T")[0]}
             </Text>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.editButton]}
+                onPress={() => handleEdit(item)}
+              >
+                <Text style={styles.buttonText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.deleteButton]}
+                onPress={() => handleDelete(item._id)}
+              >
+                <Text style={styles.buttonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       />
@@ -166,6 +245,76 @@ export default function AssignmentPage() {
           <Button title="Cancel" onPress={() => setModalVisible(false)} />
         </View>
       </Modal>
+
+      <Modal visible={editModalVisible} animationType="slide">
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Edit Assignment</Text>
+          <TextInput
+            placeholder="Title"
+            value={title}
+            onChangeText={setTitle}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Description"
+            value={description}
+            onChangeText={setDescription}
+            style={styles.input}
+            multiline
+          />
+          <View style={styles.dateContainer}>
+            <TextInput
+              placeholder="DD"
+              value={day.toString()}
+              onChangeText={(text) => setDay(parseInt(text) || day)}
+              style={styles.dateInput}
+              keyboardType="numeric"
+            />
+            <TextInput
+              placeholder="MM"
+              value={month.toString()}
+              onChangeText={(text) => setMonth(parseInt(text) || month)}
+              style={styles.dateInput}
+              keyboardType="numeric"
+            />
+            <TextInput
+              placeholder="YYYY"
+              value={year.toString()}
+              onChangeText={(text) => setYear(parseInt(text) || year)}
+              style={styles.dateInput}
+              keyboardType="numeric"
+            />
+          </View>
+          <Button title="Update Assignment" onPress={updateAssignment} />
+          <Button title="Cancel" onPress={() => setEditModalVisible(false)} />
+        </View>
+      </Modal>
+
+      <Modal visible={deleteModalVisible} animationType="fade" transparent>
+        <View style={styles.deleteModalContainer}>
+          <View style={styles.deleteModalContent}>
+            <Text style={styles.deleteModalTitle}>Confirm Delete</Text>
+            <Text style={styles.deleteModalText}>
+              Are you sure you want to delete this assignment?
+            </Text>
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity
+                style={[styles.deleteModalButton, styles.cancelButton]}
+                onPress={() => setDeleteModalVisible(false)}
+              >
+                <Text style={styles.deleteModalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.deleteModalButton, styles.confirmButton]}
+                onPress={confirmDelete}
+              >
+                <Text style={styles.deleteModalButtonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -253,5 +402,70 @@ const styles = StyleSheet.create({
     padding: 10,
     marginHorizontal: 5,
     borderRadius: 5,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+  },
+  actionButton: {
+    padding: 8,
+    borderRadius: 5,
+    marginLeft: 10,
+  },
+  editButton: {
+    backgroundColor: '#4CAF50',
+  },
+  deleteButton: {
+    backgroundColor: '#f44336',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  deleteModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  deleteModalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+    alignItems: 'center',
+  },
+  deleteModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  deleteModalText: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  deleteModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  deleteModalButton: {
+    padding: 10,
+    borderRadius: 5,
+    width: '40%',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#6c757d',
+  },
+  confirmButton: {
+    backgroundColor: '#dc3545',
+  },
+  deleteModalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

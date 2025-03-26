@@ -117,26 +117,29 @@ export default function Assignments() {
         renderItem={({ item }) => {
           const course = filteredCourses.find(course => course._id === item.courseId);
           return (
-            <TouchableOpacity
-              style={styles.assignmentCard}
-              onPress={() =>
-                router.push({
-                  pathname: "/assignment-details",
-                  params: {
-                    id: item._id,
-                    title: item.title,
-                    description: item.description,
-                    dueDate: item.dueDate,
-                    course: course?.courseName || "Unknown",
-                  },
-                })
-              }
-            >
-              <Text style={styles.assignmentTitle}>{item.title}</Text>
-              <Text style={styles.assignmentDescription}>{item.description}</Text>
-              <Text style={styles.assignmentDate}>Due: {new Date(item.dueDate).toDateString()}</Text>
-              <Text style={styles.assignmentCourse}>Course: {course ? course.courseName : "Unknown"}</Text>
-            </TouchableOpacity>
+            <View style={styles.assignmentCard}>
+              <TouchableOpacity
+                style={styles.cardContent}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(teacher)/assignment-details",
+                    params: {
+                      id: item._id,
+                      title: item.title,
+                      description: item.description,
+                      dueDate: item.dueDate,
+                      course: course?.courseName || "Unknown",
+                      courseId: item.courseId,
+                    },
+                  })
+                }
+              >
+                <Text style={styles.assignmentTitle}>{item.title}</Text>
+                <Text style={styles.assignmentDescription}>{item.description}</Text>
+                <Text style={styles.assignmentDate}>Due: {new Date(item.dueDate).toDateString()}</Text>
+                <Text style={styles.assignmentCourse}>Course: {course ? course.courseName : "Unknown"}</Text>
+              </TouchableOpacity>
+            </View>
           );
         }}
       />
@@ -160,5 +163,8 @@ const styles = StyleSheet.create({
   assignmentDescription: { fontSize: 14 },
   assignmentDate: { fontSize: 12, color: "gray" },
   assignmentCourse: { fontSize: 14, fontWeight: "bold" },
+  cardContent: {
+    flex: 1,
+  },
 });
 

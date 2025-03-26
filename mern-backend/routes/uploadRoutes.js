@@ -135,6 +135,7 @@ router.get('/user/:userId', async (req, res) => {
 
 // Get a specific submission
 router.get('/:submissionId', async (req, res) => {
+  console.log("download")
   try {
     const submission = await Submission.findById(req.params.submissionId);
     if (!submission) {

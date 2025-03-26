@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import {
   View,
   Text,
@@ -6,8 +6,9 @@ import {
   ScrollView,
   Dimensions,
   StyleSheet,
+  BackHandler,
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts, Poppins_500Medium, Poppins_700Bold } from "@expo-google-fonts/poppins";
 
@@ -15,14 +16,14 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function Dashboard() {
   const router = useRouter();
-  const [time, setTime] = useState(new Date().toLocaleTimeString());
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTime(new Date().toLocaleTimeString());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  useFocusEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      return true; // This prevents the default back action
+    });
+
+    return () => backHandler.remove();
+  });
 
   const [fontsLoaded] = useFonts({
     Poppins_500Medium,
@@ -47,7 +48,6 @@ export default function Dashboard() {
       <Text style={styles.dateText}>
         {day}, {date}
       </Text>
-      <Text style={styles.timeText}>{time}</Text>
 
       <ScrollView contentContainerStyle={styles.cardsContainer}>
         {menuItems.map((item) => (
@@ -67,8 +67,8 @@ const menuItems = [
   { label: "Courses", icon: "book-outline", route: "/courses" },
   { label: "Assignments", icon: "create-outline", route: "/assignments" },
   { label: "Requests", icon: "people-outline", route: "/Requests" },
-  { label: "Calendar", icon: "calendar-outline", route: "/calendar" },
-  { label: "Discussions", icon: "chatbubbles-outline", route: "/discussions" },
+  { label: "To-do", icon: "calendar-outline", route: "/to-do" },
+  { label: "Discussions", icon: "chatbubbles-outline", route: "/(chat)/chatHome" },
   { label: "Attendance", icon: "checkmark-circle-outline", route: "/attendance" },
   { label: "Exams", icon: "clipboard-outline", route: "/exams" },
   { label: "Resources", icon: "document-text-outline", route: "/resources" },
@@ -77,8 +77,8 @@ const menuItems = [
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
-    paddingTop: 50,
+    backgroundColor: "#f5f5f7",
+    paddingTop: 60,
     paddingHorizontal: 20,
   },
   cardsContainer: {
@@ -86,50 +86,44 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    paddingBottom: 20,
+    paddingVertical: 20,
   },
   card: {
     width: "48%",
-    marginVertical: 12,
+    marginVertical: 10,
     borderRadius: 16,
+    elevation: 3,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   cardBackground: {
-    paddingVertical: 30,
+    paddingVertical: 25,
     alignItems: "center",
     borderRadius: 16,
     backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#DDD",
+    borderWidth: 0,
   },
   dashboardTitle: {
-    fontSize: 26,
+    fontSize: 28,
     fontFamily: "Poppins_700Bold",
-    color: "#000",
+    color: "#1a1a1a",
     textAlign: "center",
-    marginBottom: 5,
+    marginBottom: 8,
   },
   dateText: {
-    fontSize: 18,
-    fontFamily: "Poppins_500Medium",
-    color: "#555",
-    textAlign: "center",
-  },
-  timeText: {
     fontSize: 16,
     fontFamily: "Poppins_500Medium",
-    color: "#777",
+    color: "#666",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 25,
   },
   cardText: {
-    marginTop: 10,
-    fontSize: 16,
+    marginTop: 12,
+    fontSize: 15,
     fontFamily: "Poppins_500Medium",
-    color: "#000",
+    color: "#333",
   },
 });
 

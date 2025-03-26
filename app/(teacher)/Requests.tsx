@@ -38,47 +38,63 @@ const TeacherApprovalScreen = () => {
 
   const handleApproval = async (id: string) => {
     try {
-      await fetch(`${API_BASE_URL}/registrations/approve`, {
+      const request = requests.find(req => req._id === id);
+      if (!request) return;
+
+      const approvalResponse = await fetch(`${API_BASE_URL}/registrations/approve`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ registrationId: id }),
       });
-      
-      // Create notification for student
-      await fetch(`${API_BASE_URL}/notifications`, {
+
+      if (!approvalResponse.ok) throw new Error('Failed to approve request');
+
+      // Create notification
+      const notificationResponse = await fetch(`${API_BASE_URL}/notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          studentId: requests.find(req => req._id === id)?.username,
-          message: `Your registration for ${requests.find(req => req._id === id)?.course.courseName} has been approved`,
+          studentId: request.username,
+          message: `Your registration for ${request.course.courseName} has been approved`,
           type: "approval"
         }),
       });
-      
-      setRequests(requests.filter((req) => req._id !== id));
+
+      if (!notificationResponse.ok) throw new Error('Failed to create notification');
+
+      setRequests(prev => prev.filter(req => req._id !== id));
     } catch (error) {
-      console.error("Error approving request:", error);
+      console.error("Error in approval process:", error);
     }
   };
 
   const handleRejection = async (id: string) => {
     try {
-      await fetch(`${API_BASE_URL}/registrations/reject/${id}`, { method: "DELETE" });
-      
-      // Create notification for student
-      await fetch(`${API_BASE_URL}/notifications`, {
+      const request = requests.find(req => req._id === id);
+      if (!request) return;
+
+      const rejectionResponse = await fetch(`${API_BASE_URL}/registrations/reject/${id}`, { 
+        method: "DELETE" 
+      });
+
+      if (!rejectionResponse.ok) throw new Error('Failed to reject request');
+
+      // Create notification
+      const notificationResponse = await fetch(`${API_BASE_URL}/notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          studentId: requests.find(req => req._id === id)?.username,
-          message: `Your registration for ${requests.find(req => req._id === id)?.course.courseName} has been rejected`,
+          studentId: request.username,
+          message: `Your registration for ${request.course.courseName} has been rejected`,
           type: "rejection"
         }),
       });
-      
-      setRequests(requests.filter((req) => req._id !== id));
+
+      if (!notificationResponse.ok) throw new Error('Failed to create notification');
+
+      setRequests(prev => prev.filter(req => req._id !== id));
     } catch (error) {
-      console.error("Error rejecting request:", error);
+      console.error("Error in rejection process:", error);
     }
   };
 
