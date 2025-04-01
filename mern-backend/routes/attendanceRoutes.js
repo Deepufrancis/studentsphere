@@ -1,177 +1,157 @@
 const express = require('express');
-const router = express.Router();
+const mongoose = require('mongoose');
 const Attendance = require('../models/attendance');
+const Course = require('../models/course.model');
+const User = require('../models/User');  // Assuming User model stores both students and teachers
+const router = express.Router();
 
-// Route to mark attendance
-router.post('/mark', async (req, res) => {
-    try {
-        const { courseId, studentId, date, status } = req.body;
+// Route to mark attendance for all students in a specific course on a specific date
+router.post('/markAll/:courseId', async (req, res) => {
+  const { courseId } = req.params;
+  const { date, status } = req.body; // 'present' or 'absent'
+  
+  if (!date || !status) {
+    return res.status(400).json({ message: 'Date and status are required.' });
+  }
 
-        // Validate required fields
-        if (!courseId || !studentId || !date || !status) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-
-        // Check if attendance record already exists for this student and date
-        const existingRecord = await Attendance.findOne({
-            course: courseId,
-            student: studentId,
-            date: new Date(date)
-        });
-
-        if (existingRecord) {
-            // Update existing record
-            existingRecord.status = status;
-            await existingRecord.save();
-            return res.status(200).json({ 
-                success: true,
-                message: 'Attendance updated successfully',
-                record: existingRecord
-            });
-        }
-
-        // Create new attendance record
-        const attendance = new Attendance({
-            course: courseId,
-            student: studentId,
-            date: new Date(date),
-            status
-        });
-        await attendance.save();
-        
-        res.status(201).json({
-            success: true,
-            message: 'Attendance marked successfully',
-            record: attendance
-        });
-    } catch (error) {
-        console.error('Attendance marking error:', error);
-        res.status(500).json({ 
-            success: false,
-            error: 'Failed to mark attendance'
-        });
+  try {
+    const course = await Course.findById(courseId).populate('students');
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found.' });
     }
+
+    // Prepare attendance data for all students
+    const attendanceData = course.students.map((student) => ({
+      course: courseId,
+      student: student._id,
+      date: new Date(date),
+      status: status === 'present', // If present, true, else false
+    }));
+
+    // Insert attendance records for all students
+    await Attendance.insertMany(attendanceData);
+    return res.status(200).json({ message: 'Attendance marked for all students.' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error marking attendance for all students.', error });
+  }
 });
 
-// Route to mark attendance for multiple students at once
-router.post('/mark-batch', async (req, res) => {
-    try {
-        const { course, attendanceRecords } = req.body;
-        
-        if (!course || !attendanceRecords || !Array.isArray(attendanceRecords) || attendanceRecords.length === 0) {
-            return res.status(400).json({ error: 'Invalid request data' });
-        }
+// Route to mark attendance for a single student on a specific date
+router.post('/mark/:courseId/:studentId', async (req, res) => {
+  const { courseId, studentId } = req.params;
+  const { date, status } = req.body; // 'present' or 'absent'
 
-        const results = await Promise.all(
-            attendanceRecords.map(async (record) => {
-                if (!record.student || !record.status) {
-                    return { success: false, student: record.student, error: 'Missing required fields' };
-                }
+  if (!date || !status) {
+    return res.status(400).json({ message: 'Date and status are required.' });
+  }
 
-                try {
-                    // Use upsert to update if exists or create if doesn't
-                    await Attendance.findOneAndUpdate(
-                        { course, student: record.student, date: record.date || new Date() },
-                        { status: record.status, remarks: record.remarks },
-                        { upsert: true, new: true }
-                    );
-                    return { success: true, student: record.student };
-                } catch (err) {
-                    return { success: false, student: record.student, error: err.message };
-                }
-            })
-        );
-
-        res.status(200).json({ message: 'Batch attendance processed', results });
-    } catch (error) {
-        console.error('Batch attendance error:', error);
-        res.status(500).json({ error: 'Failed to process batch attendance' });
+  try {
+    const course = await Course.findById(courseId);
+    const student = await User.findById(studentId);
+    if (!course || !student) {
+      return res.status(404).json({ message: 'Course or Student not found.' });
     }
+
+    // Check if attendance already exists for the given date and student
+    const existingAttendance = await Attendance.findOne({ 
+      course: courseId,
+      student: studentId,
+      date: new Date(date),
+    });
+
+    if (existingAttendance) {
+      return res.status(400).json({ message: 'Attendance for this date has already been recorded.' });
+    }
+
+    // Create attendance entry for the student
+    const attendance = new Attendance({
+      course: courseId,
+      student: studentId,
+      date: new Date(date),
+      status: status === 'present',
+    });
+
+    await attendance.save();
+    return res.status(200).json({ message: 'Attendance marked successfully.' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error marking attendance.', error });
+  }
 });
 
-// Route to fetch attendance records
-router.get('/records', async (req, res) => {
-    try {
-        const { course, date, startDate, endDate } = req.query;
+// Route to fetch attendance of a student for a specific course on a specific date
+router.get('/:courseId/:studentId', async (req, res) => {
+  const { courseId, studentId } = req.params;
+  const { date } = req.query;  // Expected format: 'YYYY-MM-DD'
 
-        const query = {};
-        if (course) query.course = course;
-        
-        if (date) {
-            const queryDate = new Date(date);
-            queryDate.setHours(0, 0, 0, 0);
-            const nextDate = new Date(queryDate);
-            nextDate.setDate(queryDate.getDate() + 1);
-            
-            query.date = {
-                $gte: queryDate,
-                $lt: nextDate
-            };
-        }
+  if (!date) {
+    return res.status(400).json({ message: 'Date is required.' });
+  }
 
-        const records = await Attendance.find(query)
-            .populate('student', '_id username') // Include both _id and username
-            .sort({ date: -1 });
-            
-        // Transform the response to include username
-        const formattedRecords = records.map(record => ({
-            _id: record._id,
-            studentId: record.student._id,
-            username: record.student.username,
-            status: record.status,
-            date: record.date
-        }));
-            
-        res.status(200).json(formattedRecords);
-    } catch (error) {
-        console.error('Fetch attendance error:', error);
-        res.status(500).json({ success: false, error: 'Failed to fetch attendance records' });
+  try {
+    const attendanceDate = new Date(date);
+
+    // Fetch attendance for the student, course, and date
+    const attendance = await Attendance.findOne({
+      course: courseId,
+      student: studentId,
+      date: attendanceDate,
+    });
+
+    if (!attendance) {
+      return res.status(404).json({ message: 'Attendance not found for the specified date.' });
     }
+
+    return res.status(200).json({
+      status: attendance.status ? 'Present' : 'Absent',
+      date: attendance.date.toISOString(),
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error retrieving attendance.', error });
+  }
 });
 
-// Route to get attendance statistics
-router.get('/statistics', async (req, res) => {
-    try {
-        const { course, student, startDate, endDate } = req.query;
-        
-        // Build match query for aggregation
-        const matchQuery = {};
-        if (course) matchQuery.course = mongoose.Types.ObjectId(course);
-        if (student) matchQuery.student = mongoose.Types.ObjectId(student);
-        
-        // Add date range filter if provided
-        if (startDate || endDate) {
-            matchQuery.date = {};
-            if (startDate) matchQuery.date.$gte = new Date(startDate);
-            if (endDate) matchQuery.date.$lte = new Date(endDate);
-        }
-        
-        const statistics = await Attendance.aggregate([
-            { $match: matchQuery },
-            {
-                $group: {
-                    _id: "$status",
-                    count: { $sum: 1 }
-                }
-            }
-        ]);
-        
-        // Format the statistics
-        const formattedStats = {
-            total: statistics.reduce((acc, curr) => acc + curr.count, 0),
-            present: statistics.find(s => s._id === 'Present')?.count || 0,
-            absent: statistics.find(s => s._id === 'Absent')?.count || 0
-        };
-        
-        formattedStats.presentPercentage = formattedStats.total > 0 
-            ? (formattedStats.present / formattedStats.total * 100).toFixed(2) 
-            : 0;
-            
-        res.status(200).json(formattedStats);
-    } catch (error) {
-        console.error('Statistics error:', error);
-        res.status(500).json({ error: 'Failed to get attendance statistics' });
+// Route to fetch all attendance for a specific student (for all courses)
+router.get('/student/:studentId', async (req, res) => {
+  const { studentId } = req.params;
+
+  try {
+    const attendance = await Attendance.find({ student: studentId }).populate('course');
+    if (!attendance) {
+      return res.status(404).json({ message: 'No attendance records found for this student.' });
     }
+
+    const formattedAttendance = attendance.map((att) => ({
+      courseName: att.course.courseName,
+      date: att.date.toISOString(),
+      status: att.status ? 'Present' : 'Absent',
+    }));
+
+    return res.status(200).json(formattedAttendance);
+  } catch (error) {
+    return res.status(500).json({ message: 'Error retrieving attendance.', error });
+  }
+});
+
+// Route to fetch all attendance for a specific course (for all students)
+router.get('/course/:courseId', async (req, res) => {
+  const { courseId } = req.params;
+
+  try {
+    const attendance = await Attendance.find({ course: courseId }).populate('student');
+    if (!attendance) {
+      return res.status(404).json({ message: 'No attendance records found for this course.' });
+    }
+
+    const formattedAttendance = attendance.map((att) => ({
+      studentUsername: att.student.username,
+      date: att.date.toISOString(),
+      status: att.status ? 'Present' : 'Absent',
+    }));
+
+    return res.status(200).json(formattedAttendance);
+  } catch (error) {
+    return res.status(500).json({ message: 'Error retrieving attendance.', error });
+  }
 });
 
 module.exports = router;

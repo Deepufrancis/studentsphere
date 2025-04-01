@@ -1,18 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, Modal } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "../constants";
 
 interface RegistrationRequest {
   _id: string;
+  studentId: string;  // Add this
   username: string;
-  course: { _id: string; courseName: string };
+  course: { 
+    _id: string; 
+    courseName: string 
+  };
 }
 
 const TeacherApprovalScreen = () => {
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [teacherUsername, setTeacherUsername] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     const fetchTeacherRequests = async () => {
@@ -44,27 +50,32 @@ const TeacherApprovalScreen = () => {
       const approvalResponse = await fetch(`${API_BASE_URL}/registrations/approve`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ registrationId: id }),
+        body: JSON.stringify({
+          registrationId: id,
+          studentId: request.studentId,
+          courseId: request.course._id
+        }),
       });
 
       if (!approvalResponse.ok) throw new Error('Failed to approve request');
 
-      // Create notification
       const notificationResponse = await fetch(`${API_BASE_URL}/notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          studentId: request.username,
+          studentId: request.studentId,
+          username: request.username,
           message: `Your registration for ${request.course.courseName} has been approved`,
           type: "approval"
         }),
       });
 
       if (!notificationResponse.ok) throw new Error('Failed to create notification');
-
       setRequests(prev => prev.filter(req => req._id !== id));
     } catch (error) {
       console.error("Error in approval process:", error);
+      setErrorMessage("Failed to approve request. Please try again.");
+      setModalVisible(true);
     }
   };
 
@@ -74,17 +85,22 @@ const TeacherApprovalScreen = () => {
       if (!request) return;
 
       const rejectionResponse = await fetch(`${API_BASE_URL}/registrations/reject/${id}`, { 
-        method: "DELETE" 
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: request.studentId,
+          courseId: request.course._id
+        }),
       });
 
       if (!rejectionResponse.ok) throw new Error('Failed to reject request');
 
-      // Create notification
       const notificationResponse = await fetch(`${API_BASE_URL}/notifications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          studentId: request.username,
+          studentId: request.studentId,
+          username: request.username,
           message: `Your registration for ${request.course.courseName} has been rejected`,
           type: "rejection"
         }),
@@ -95,6 +111,8 @@ const TeacherApprovalScreen = () => {
       setRequests(prev => prev.filter(req => req._id !== id));
     } catch (error) {
       console.error("Error in rejection process:", error);
+      setErrorMessage("Failed to reject request. Please try again.");
+      setModalVisible(true);
     }
   };
 
@@ -108,6 +126,25 @@ const TeacherApprovalScreen = () => {
 
   return (
     <View style={styles.container}>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>{errorMessage}</Text>
+            <TouchableOpacity 
+              style={styles.modalButton} 
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      
       {requests.length === 0 ? (
         <Text style={styles.noRequestsText}>No pending requests</Text>
       ) : (
@@ -155,6 +192,35 @@ const styles = StyleSheet.create({
   approveButton: { backgroundColor: "#008000", padding: 10, borderRadius: 8, flex: 1, marginRight: 5 },
   rejectButton: { backgroundColor: "#FF0000", padding: 10, borderRadius: 8, flex: 1, marginLeft: 5 },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "bold", textAlign: "center" },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '80%',
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButton: {
+    backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 5,
+    width: '50%',
+  },
+  modalButtonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontSize: 16,
+  },
 });
 
 export default TeacherApprovalScreen;

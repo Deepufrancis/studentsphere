@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Animated, Dimensions, StyleSheet, ScrollV
 import { Ionicons } from "@expo/vector-icons";
 import { useState, useRef, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from 'expo-linear-gradient';
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -35,20 +36,14 @@ export default function Dashboard() {
   };
 
   return (
-    <View style={styles.mainContainer}>
+    <LinearGradient
+      colors={['#ffffff', '#f8fafc']}
+      style={styles.mainContainer}>
       <View style={styles.cardContainer}>
-        <Text style={styles.dashboardTitle}>Student Dashboard</Text>
-        {username && <Text style={styles.welcomeText}>Welcome back, {username}</Text>}
-        <View style={styles.divider} />
-        <View style={styles.dateContainer}>
-          <View style={styles.dateWrapper}>
-            <Ionicons name="calendar-outline" size={28} color="#4a5568" style={styles.calendarIcon} />
-            <View>
-              <Text style={styles.dayText}>{day}</Text>
-              <Text style={styles.dateText}>{date}</Text>
-            </View>
-          </View>
+        <View style={styles.headerContainer}>
+          <Text style={styles.dashboardTitle}>Student Dashboard</Text>
         </View>
+        <View style={styles.divider} />
         
         {/* Grid Layout */}
         <ScrollView 
@@ -57,59 +52,63 @@ export default function Dashboard() {
         >
           <View style={styles.gridContainer}>
             <View style={styles.gridRow}>
-              <TouchableOpacity style={styles.gridItem} onPress={() => router.push("./regcourse")}>
-                <Ionicons name="book-outline" size={40} color="black" />
+              <TouchableOpacity 
+                style={[styles.gridItem, styles.gridItemHover]} 
+                onPress={() => router.push("./regcourse")}>
+                <Ionicons name="book-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Register Courses</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.gridItem} onPress={() => router.push("./(student_assignment)/AssignmentViewer")}>
-                <Ionicons name="document-text-outline" size={40} color="black" />
+              <TouchableOpacity 
+                style={[styles.gridItem, styles.gridItemHover]} 
+                onPress={() => router.push("./(student_assignment)/AssignmentViewer")}>
+                <Ionicons name="document-text-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Assignments</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.gridRow}>
-              <TouchableOpacity disabled={true}  style={styles.gridItem} onPress={() => router.push("./classes")}>
-                <Ionicons name="school-outline" size={40} color="black" />
+              <TouchableOpacity disabled={true}  style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./classes")}>
+                <Ionicons name="school-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Classes</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity disabled={false} style={styles.gridItem} onPress={() => router.push("./calendar")}>
-                <Ionicons name="calendar-outline" size={40} color="black" />
+              <TouchableOpacity disabled={false} style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./calendar")}>
+                <Ionicons name="calendar-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Calendar</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.gridRow}>
-              <TouchableOpacity style={styles.gridItem} onPress={() => router.push({
+              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push({
                 pathname: "/(chat)/chatHome",
                 params: { selectedRole: "student" }
               })}>
-                <Ionicons name="chatbubbles-outline" size={40} color="black" />
+                <Ionicons name="chatbubbles-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Discussions</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.gridItem} onPress={() => router.push("./attendance")}>
-                <Ionicons name="checkbox-outline" size={40} color="black" />
+              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./attendance")}>
+                <Ionicons name="checkbox-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Attendance</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.gridRow}>
-              <TouchableOpacity style={styles.gridItem} onPress={() => router.push("./exampleassign")}>
-                <Ionicons name="newspaper-outline" size={40} color="black" />
+              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./exampleassign")}>
+                <Ionicons name="newspaper-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>assignment</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity disabled={true} style={styles.gridItem} onPress={() => router.push("./resources")}>
-                <Ionicons name="download-outline" size={40} color="black" />
+              <TouchableOpacity disabled={true} style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./resources")}>
+                <Ionicons name="download-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Resources</Text>
               </TouchableOpacity>
             </View>
           </View>
         </ScrollView>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -117,7 +116,6 @@ const styles = StyleSheet.create({
     mainContainer: {
       flex: 1,
       padding: 16,
-      backgroundColor: "#f0f2f5",
     },
     cardContainer: {
       flex: 1,
@@ -125,10 +123,10 @@ const styles = StyleSheet.create({
       borderRadius: 20,
       padding: 16,
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      elevation: 8,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.08,
+      shadowRadius: 15,
+      elevation: 10,
     },
     dateContainer: {
       padding: 16,
@@ -148,16 +146,15 @@ const styles = StyleSheet.create({
       alignItems: "center",
     },
     calendarIcon: {
-      marginRight: 16,
+      marginRight: 8,
     },
     dayText: {
-      fontSize: 18,
+      fontSize: 14,
       fontWeight: "600",
       color: "#2d3748",
-      marginBottom: 4,
     },
     dateText: {
-      fontSize: 16,
+      fontSize: 12,
       color: "#4a5568",
     },
     welcomeText: {
@@ -201,18 +198,17 @@ const styles = StyleSheet.create({
     },
     divider: {
       height: 2,
-      backgroundColor: "#e2e8f0",
+      backgroundColor: "#f1f5f9",
       marginBottom: 24,
-      width: "90%",
+      width: "95%",
       alignSelf: "center",
     },
     dashboardTitle: {
-      fontSize: 28,
+      fontSize: 26,
       fontWeight: "bold",
-      textAlign: "center",
+      textAlign: "left",
       color: "#1a365d",
-      marginVertical: 16,
-      letterSpacing: 0.5,
+      letterSpacing: 0.7,
     },
     gridContainer: {
       alignItems: "center",
@@ -241,7 +237,16 @@ const styles = StyleSheet.create({
       shadowRadius: 6,
       elevation: 5,
       borderWidth: 1,
-      borderColor: "rgba(226, 232, 240, 0.9)",
+      borderColor: "rgba(226, 232, 240, 0.95)",
+      transform: [{ scale: 1 }],
+      transition: 'transform 0.2s',
+    },
+    gridItemHover: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 7,
     },
     drawer: {
       position: "absolute",
@@ -279,16 +284,21 @@ const styles = StyleSheet.create({
         marginRight:15
     },
     gridText: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: "600",
-      marginTop: 12,
+      marginTop: 14,
       color: "#334155",
       textAlign: "center",
-      letterSpacing: 0.2,
+      letterSpacing: 0.3,
     },
     scrollContainer: {
       flexGrow: 1,
       paddingBottom: 20,
+    },
+    headerContainer: {
+      marginVertical: 16,
+      paddingHorizontal: 10,
+      marginBottom: 24,
     },
   });
 

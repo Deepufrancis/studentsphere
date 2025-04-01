@@ -4,7 +4,14 @@ const Course = require('../models/course.model');
 const router = express.Router();
 
 
-router.post('/', async (req, res) => {
+/**
+ * @route   POST /api/courses
+ * @desc    Create a new course
+ * @access  Private
+ * @params  {courseName, description, teacher} - Request body
+ * @returns Created course object
+ */
+router.post('/',async (req, res) => {
   try {
     const { courseName, description, teacher } = req.body;
 
@@ -20,7 +27,13 @@ router.post('/', async (req, res) => {
   }
 });
 
-
+/**
+ * @route   GET /api/courses
+ * @desc    Get all courses or filter by teacher
+ * @access  Public
+ * @query   {teacher} - Optional query parameter to filter by teacher
+ * @returns Array of course objects
+ */
 router.get('/', async (req, res) => {
   try {
     const { teacher } = req.query;
@@ -34,7 +47,14 @@ router.get('/', async (req, res) => {
   }
 });
 
-
+/**
+ * @route   PUT /api/courses/:id
+ * @desc    Update a course by ID
+ * @access  Private
+ * @params  {id} - Course ID
+ * @body    {courseName, description} - Fields to update
+ * @returns Updated course object
+ */
 router.put('/:id', async (req, res) => {
   try {
     const { courseName, description } = req.body;
@@ -54,7 +74,13 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete Course
+/**
+ * @route   DELETE /api/courses/:id
+ * @desc    Delete a course by ID
+ * @access  Private
+ * @params  {id} - Course ID
+ * @returns Success message
+ */
 router.delete('/:id', async (req, res) => {
   try {
     const id = req.params.id.trim();
@@ -74,7 +100,13 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-
+/**
+ * @route   GET /api/courses/:id
+ * @desc    Get a single course by ID
+ * @access  Public
+ * @params  {id} - Course ID
+ * @returns Course object
+ */
 router.get("/:id", async (req, res) => {
   const courseId = req.params.id;
   
@@ -95,7 +127,6 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error", details: error.message });
   }
 });
-
 
 module.exports=router;
 

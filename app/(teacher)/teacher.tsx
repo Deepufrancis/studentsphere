@@ -66,6 +66,7 @@ export default function Dashboard() {
 const menuItems = [
   { label: "Courses", icon: "book-outline", route: "/courses" },
   { label: "Assignments", icon: "create-outline", route: "/assignments" },
+  { label: "Classes", icon: "school-outline", route: "/class" },
   { label: "Requests", icon: "people-outline", route: "/Requests" },
   { label: "To-do", icon: "calendar-outline", route: "/to-do" },
   { label: "Discussions", icon: "chatbubbles-outline", route: "/(chat)/chatHome" },

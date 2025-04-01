@@ -3,8 +3,12 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
 const http = require("http");
-const swaggerJsdoc = require("swagger-jsdoc");
-const swaggerUi = require("swagger-ui-express");
+require('dotenv').config();
+
+const jwtSecret = process.env.JWT_SECRET;  // secret key access
+
+
+
 
 
 
@@ -23,6 +27,7 @@ const userRoutes = require("./routes/userRoutes");
 const toDoRoutes = require("./routes/todoRoutes");
 const resourceRoutes = require("./routes/resourceRoutes");
 const otpRoutes = require("./routes/otpRoutes");
+const liveClassRoutes=require("./routes/liveclass");
 
 
 
@@ -30,25 +35,6 @@ const app = express();
 const server = http.createServer(app);
 
 
-const options = {
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "PU Student Sphere API",
-      version: "1.0.0",
-      description: "API documentation for the PU Student Sphere project",
-    },
-    servers: [
-      {
-        url: "http://localhost:5000", // Change if deployed
-      },
-    ],
-  },
-  apis: ["./routes/*.js"], // Match the path where your routes are stored
-};
-
-// 🔹 Initialize Swagger
-const swaggerSpec = swaggerJsdoc(options);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -62,7 +48,7 @@ app.use(cors({
 }));
 
 mongoose
-  .connect("mongodb://127.0.0.1:27017/student-sphere", )
+  .connect(process.env.MONGODB_URL, )
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error("MongoDB Connection Error:", err));
 
@@ -81,6 +67,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/todos", toDoRoutes);
 app.use("/api/resources", resourceRoutes);
 app.use("/api/otp", otpRoutes);
+app.use("/api/liveclass",liveClassRoutes);
 
 
 
@@ -88,9 +75,6 @@ app.get("/", (req, res) => {
   res.send("Server is working!");
 });
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-console.log("Swagger Docs available at http://localhost:5000/api-docs");
 
 
 server.listen(5000, () => console.log("Server running on port 5000"));
