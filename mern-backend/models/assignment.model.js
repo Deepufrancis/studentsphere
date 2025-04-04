@@ -5,8 +5,6 @@ const assignmentSchema = new mongoose.Schema({
   description: { type: String },
   courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
   dueDate: { type: Date, required: true },
-  fileUrl: { type: String, default: "" },
-  uploadedBy: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
 });
 

@@ -131,7 +131,7 @@ router.post("/:assignmentId/comments", async (req, res) => {
   }
 });
 
-
+//fetch comments
 router.get("/:id/comments", async (req, res) => {
   try {
     const comments = await Comment.find({ assignmentId: req.params.id }).sort({ createdAt: -1 });

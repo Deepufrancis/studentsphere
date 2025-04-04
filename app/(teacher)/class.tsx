@@ -850,8 +850,7 @@ const styles = StyleSheet.create({
   menuItemDanger: {
     borderBottomWidth: 0,
   },
-  courseName: { fontSize: 18, fontWeight: "bold" },
-  courseDescription: { fontSize: 14, color: "#555", marginTop: 5 },
+ 
   editButton: { backgroundColor: "#FFA500", padding: 10, marginTop: 5, borderRadius: 5 },
   deleteButton: { backgroundColor: "#FF3B30", padding: 10, marginTop: 5, borderRadius: 5 },
   addButton: { 
@@ -876,8 +875,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#2c3e50',
     flex: 1,
-    backgroundColor: 'transparent',
-    borderWidth: 0,
+   
   },
   error: { color: "red", textAlign: "center", marginTop: 20 },
   scheduledTime: {
@@ -953,17 +951,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  cancelButton: {
-    backgroundColor: '#f1f1f1',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-  },
-  buttonText: { 
-    color: '#fff', 
-    textAlign: 'center', 
-    fontWeight: '600',
-    fontSize: 16,
-  },
+ 
   // Update the text color for cancel button
   cancelButtonText: {
     color: '#666',

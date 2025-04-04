@@ -40,76 +40,141 @@ const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 } // 20MB file size limit
 });
 
+// Add this route before the post route
+router.get('/assignments/:assignmentId/user/:userId', async (req, res) => {
+  try {
+    const submission = await Submission.findOne({
+      assignmentId: req.params.assignmentId,
+      userId: req.params.userId
+    });
+    
+    if (submission) {
+      res.json({
+        uploaded: true,
+        submittedAt: submission.submittedAt,
+        fileName: submission.fileName,
+        fileUrl: `${process.env.API_BASE_URL}${submission.fileUrl}`
+      });
+    } else {
+      res.json({ uploaded: false });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to check submission status' });
+  }
+});
+
 // Upload a submission for an assignment
 router.post('/:assignmentId', upload.single('file'), async (req, res) => {
   try {
     const { assignmentId } = req.params;
     const { userId } = req.body;
     
-    // Validate required fields
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+    if (!req.file || !userId) {
+      return res.status(400).json({ error: 'File and userId are required' });
     }
     
-    if (!userId) {
-      return res.status(400).json({ error: 'userId is required' });
-    }
-    
-    // Check if assignment exists
     const assignment = await Assignment.findById(assignmentId);
     if (!assignment) {
       return res.status(404).json({ error: 'Assignment not found' });
     }
     
-    // Create file URL
-    const fileUrl = `/uploads/submissions/${req.file.filename}`;
+    // Fix: Create relative file URL for database storage
+    const fileUrlForDb = `/uploads/submissions/${req.file.filename}`;
     
-    // Check if submission already exists for this user and assignment
     let submission = await Submission.findOne({ 
-      assignmentId: assignmentId,
-      userId: userId
+      assignmentId,
+      userId
     });
     
     if (submission) {
-      // Update existing submission
-      const oldFileUrl = submission.fileUrl;
+      // Fix: Get correct old file path
+      const oldFilePath = path.join(__dirname, '..', 'uploads', 'submissions', path.basename(submission.fileUrl));
       
-      submission.fileUrl = fileUrl;
+      submission.fileUrl = fileUrlForDb;
       submission.fileName = req.file.originalname;
       submission.submittedAt = new Date();
-      submission.status = 'submitted';
       
       await submission.save();
       
-      // Delete the old file if it exists
-      const oldFilePath = path.join(__dirname, '..', oldFileUrl);
+      // Delete old file if exists
       if (fs.existsSync(oldFilePath)) {
         fs.unlinkSync(oldFilePath);
       }
-      
-      res.status(200).json({
-        message: 'Submission updated successfully',
-        submission
-      });
     } else {
-      // Create new submission
       submission = new Submission({
-        assignmentId: assignmentId,
-        userId: userId,
-        fileUrl: fileUrl,
-        fileName: req.file.originalname
+        assignmentId,
+        userId,
+        fileUrl: fileUrlForDb,
+        fileName: req.file.originalname,
+        submittedAt: new Date()
       });
       
       await submission.save();
-      
-      res.status(201).json({
-        message: 'Submission created successfully',
-        submission
-      });
     }
+    
+    // Return absolute URL in response
+    const fullFileUrl = `${process.env.API_BASE_URL}${fileUrlForDb}`;
+    
+    res.status(submission ? 200 : 201).json({
+      message: `Submission ${submission ? 'updated' : 'created'} successfully`,
+      submission: {
+        ...submission.toObject(),
+        fileUrl: fullFileUrl
+      }
+    });
+    
   } catch (error) {
     console.error('Submission error:', error);
-    res.status(500).json({ error: 'Failed to process submission', details: error.message });
+    res.status(500).json({ error: 'Failed to process submission' });
+  }
+});
+
+// Replace an existing submission
+router.put('/:assignmentId/replace', upload.single('file'), async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    const { userId } = req.body;
+    
+    if (!req.file || !userId) {
+      return res.status(400).json({ error: 'File and userId are required' });
+    }
+
+    const existingSubmission = await Submission.findOne({ 
+      assignmentId,
+      userId
+    });
+
+    if (!existingSubmission) {
+      return res.status(404).json({ error: 'No existing submission found' });
+    }
+
+    // Delete old file
+    const oldFilePath = path.join(__dirname, '..', 'uploads', 'submissions', path.basename(existingSubmission.fileUrl));
+    if (fs.existsSync(oldFilePath)) {
+      fs.unlinkSync(oldFilePath);
+    }
+
+    // Update with new file
+    const fileUrlForDb = `/uploads/submissions/${req.file.filename}`;
+    existingSubmission.fileUrl = fileUrlForDb;
+    existingSubmission.fileName = req.file.originalname;
+    existingSubmission.submittedAt = new Date();
+    
+    await existingSubmission.save();
+
+    const fullFileUrl = `${process.env.API_BASE_URL}${fileUrlForDb}`;
+    
+    res.status(200).json({
+      message: 'Submission replaced successfully',
+      submission: {
+        ...existingSubmission.toObject(),
+        fileUrl: fullFileUrl
+      }
+    });
+    
+  } catch (error) {
+    console.error('Replacement error:', error);
+    res.status(500).json({ error: 'Failed to replace submission' });
   }
 });
 

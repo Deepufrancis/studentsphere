@@ -1,5 +1,5 @@
 import { Slot } from "expo-router";
-import Navbar from "../components/Navbar";
+import Navbar from "../components/sNavbar";
 import { View } from "react-native";
 
 export default function Layout() {

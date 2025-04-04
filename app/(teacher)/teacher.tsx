@@ -73,6 +73,8 @@ const menuItems = [
   { label: "Attendance", icon: "checkmark-circle-outline", route: "/attendance" },
   { label: "Exams", icon: "clipboard-outline", route: "/exams" },
   { label: "Resources", icon: "document-text-outline", route: "/resources" },
+  { label: "@testing-page", icon: "document-text-outline", route: "/teacherProfile" },
+
 ];
 
 const styles = StyleSheet.create({

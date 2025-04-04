@@ -58,19 +58,6 @@ const TeacherApprovalScreen = () => {
       });
 
       if (!approvalResponse.ok) throw new Error('Failed to approve request');
-
-      const notificationResponse = await fetch(`${API_BASE_URL}/notifications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: request.studentId,
-          username: request.username,
-          message: `Your registration for ${request.course.courseName} has been approved`,
-          type: "approval"
-        }),
-      });
-
-      if (!notificationResponse.ok) throw new Error('Failed to create notification');
       setRequests(prev => prev.filter(req => req._id !== id));
     } catch (error) {
       console.error("Error in approval process:", error);
@@ -94,20 +81,6 @@ const TeacherApprovalScreen = () => {
       });
 
       if (!rejectionResponse.ok) throw new Error('Failed to reject request');
-
-      const notificationResponse = await fetch(`${API_BASE_URL}/notifications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: request.studentId,
-          username: request.username,
-          message: `Your registration for ${request.course.courseName} has been rejected`,
-          type: "rejection"
-        }),
-      });
-
-      if (!notificationResponse.ok) throw new Error('Failed to create notification');
-
       setRequests(prev => prev.filter(req => req._id !== id));
     } catch (error) {
       console.error("Error in rejection process:", error);

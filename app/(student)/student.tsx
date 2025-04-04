@@ -68,7 +68,7 @@ export default function Dashboard() {
             </View>
 
             <View style={styles.gridRow}>
-              <TouchableOpacity disabled={true}  style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./classes")}>
+              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./sclass")}>
                 <Ionicons name="school-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Classes</Text>
               </TouchableOpacity>
@@ -103,6 +103,13 @@ export default function Dashboard() {
               <TouchableOpacity disabled={true} style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./resources")}>
                 <Ionicons name="download-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Resources</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.gridRow}>
+              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("/(student)/testing")}>
+                <Ionicons name="construct-outline" size={40} color="#2d3748" />
+                <Text style={styles.gridText}>Testing</Text>
               </TouchableOpacity>
             </View>
           </View>

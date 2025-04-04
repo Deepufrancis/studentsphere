@@ -25,6 +25,17 @@ router.get("/:teacher", async (req, res) => {
   }
 });
 
+// Get live classes by course ID
+router.get("/course/:courseId", async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const liveClasses = await LiveClass.find({ courseId }).populate("courseId");
+    res.json(liveClasses);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching live classes for course" });
+  }
+});
+
 // Edit a live class
 router.put("/:id", async (req, res) => {
   try {

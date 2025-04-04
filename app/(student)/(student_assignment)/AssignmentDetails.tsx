@@ -150,12 +150,26 @@ export default function AssignmentDetails() {
 
   const pickFile = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({ type: "application/pdf" });
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-powerpoint',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'text/plain',
+          'application/zip',
+          'application/x-rar-compressed'
+        ]
+      });
       if (!result.canceled) {
         setFile(result.assets[0]);
       }
     } catch (error) {
       console.error("Error picking file:", error);
+      Alert.alert("Error", "Failed to select file");
     }
   };
 
@@ -164,40 +178,116 @@ export default function AssignmentDetails() {
   };
 
   const uploadFile = async () => {
-    if (!file) {
-      Alert.alert("Error", "No file selected");
+    if (!file || !userId) {
+      Alert.alert("Error", !file ? "No file selected" : "User ID not found");
       return;
     }
-    if (!userId) {
-      Alert.alert("Error", "User ID not found");
-      return;
-    }
+    
     try {
       setUploading(true);
       const formData = new FormData();
-      formData.append("file", {
+      
+      formData.append('file', {
         uri: file.uri,
-        name: file.name,
-        type: file.mimeType || "application/pdf",
+        type: 'application/pdf',
+        name: file.name || 'assignment.pdf'
       } as any);
-      formData.append("userId", userId);
-
-      const response = await fetch(`${API_BASE_URL}/uploads/assignments/${params.id}`, {
-        method: "POST",
+      
+      formData.append('userId', userId);
+  
+      const response = await fetch(`${API_BASE_URL}/uploads/${params.id}`, {
+        method: 'POST',
         body: formData,
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: {
+          'Accept': 'application/json'
+          // Remove Content-Type header to let the browser set it with boundary
+        },
+      });
+  
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Server response: ${responseText}`);
+      }
+  
+      if (!response.ok) {
+        throw new Error(result.error || 'Upload failed');
+      }
+  
+      setUploadedFileUrl(result.submission.fileUrl);
+      setAlreadyUploaded(true);
+      fetchAssignmentDetails();
+      Alert.alert("Success", "Assignment uploaded successfully!");
+      setFile(null);
+      
+    } catch (error) {
+      Alert.alert("Error", `Upload failed: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const replaceFile = async () => {
+    if (!file || !userId) {
+      Alert.alert("Error", !file ? "No file selected" : "User ID not found");
+      return;
+    }
+    
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      
+      // Ensure file object is properly formatted
+      const fileToUpload = {
+        uri: file.uri,
+        type: file.mimeType || 'application/pdf',
+        name: file.name || 'assignment.pdf'
+      };
+      
+      formData.append('file', fileToUpload as any);
+      formData.append('userId', userId);
+
+      console.log('Replacing file:', {
+        assignmentId: params.id,
+        userId,
+        fileName: file.name
       });
 
-      if (response.ok) {
-        Alert.alert("Success", "Assignment uploaded successfully!");
-        setFile(null);
-        setAlreadyUploaded(true);
-      } else {
-        const errorText = await response.text();
-        Alert.alert("Error", `Upload failed: ${errorText}`);
+      const response = await fetch(`${API_BASE_URL}/uploads/${params.id}/replace`, {
+        method: 'PUT',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+          // Important: Do not set Content-Type header for FormData
+        },
+      });
+
+      // Log response for debugging
+      const responseText = await response.text();
+      console.log('Server response:', responseText);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Invalid server response: ${responseText}`);
       }
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Replacement failed');
+      }
+
+      setUploadedFileUrl(result.submission.fileUrl);
+      fetchAssignmentDetails();
+      checkIfUploaded(userId);
+      Alert.alert("Success", "Assignment replaced successfully!");
+      setFile(null);
+      
     } catch (error) {
-      Alert.alert("Error", `Failed to upload assignment: ${error.message}`);
+      console.error('File replacement error:', error);
+      Alert.alert("Error", `Replacement failed: ${error.message}`);
     } finally {
       setUploading(false);
     }
@@ -260,37 +350,35 @@ export default function AssignmentDetails() {
             <ActivityIndicator size="large" color="#007bff" />
           )}
 
-          <View style={styles.uploadSection}>
-            <Text style={styles.sectionTitle}>Assignment Submission</Text>
-            {alreadyUploaded ? (
-              <View style={styles.uploadedContainer}>
-                <Text style={styles.uploadedText}>Assignment submitted successfully</Text>
-                <TouchableOpacity 
-                  style={styles.viewButton} 
-                  onPress={viewUploadedAssignment}
-                >
-                  <Text style={styles.viewButtonText}>View Submission</Text>
+          {!alreadyUploaded && (
+            <View style={styles.uploadSection}>
+              <Text style={styles.sectionTitle}>Assignment Submission</Text>
+              <Text style={styles.supportedFormats}>
+                Supported formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, ZIP, RAR
+              </Text>
+              {file ? (
+                <View style={styles.fileContainer}>
+                  <Text style={styles.fileName}>{file.name}</Text>
+                  <TouchableOpacity style={styles.cancelButton} onPress={removeFile}>
+                    <Text style={styles.cancelButtonText}>X</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.selectButton} onPress={pickFile}>
+                  <Text style={styles.selectButtonText}>Select File</Text>
                 </TouchableOpacity>
-              </View>
-            ) : file ? (
-              <View style={styles.fileContainer}>
-                <Text style={styles.fileName}>{file.name}</Text>
-                <TouchableOpacity style={styles.cancelButton} onPress={removeFile}>
-                  <Text style={styles.cancelButtonText}>X</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity style={styles.selectButton} onPress={pickFile}>
-                <Text style={styles.selectButtonText}>Select File</Text>
+              )}
+              <TouchableOpacity 
+                style={[styles.submitButton, !file && styles.disabledButton]} 
+                onPress={uploadFile} 
+                disabled={!file || uploading}
+              >
+                <Text style={styles.submitButtonText}>
+                  {uploading ? "Uploading..." : "Submit"}
+                </Text>
               </TouchableOpacity>
-            )}
-
-            {!alreadyUploaded && (
-              <TouchableOpacity style={[styles.submitButton, !file && styles.disabledButton]} onPress={uploadFile} disabled={!file || uploading}>
-                <Text style={styles.submitButtonText}>{uploading ? "Uploading..." : "Submit"}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+            </View>
+          )}
 
           <View style={styles.discussionHeader}>
             <Text style={styles.sectionTitle}>Discussion</Text>
@@ -345,6 +433,145 @@ export default function AssignmentDetails() {
 }
 
 const styles = StyleSheet.create({
+  scrollContainer: {
+    flex: 1,
+    backgroundColor: "#f0f2f5",
+  },
+  container: { 
+    padding: 16,
+  },
+  title: { 
+    fontSize: 26, 
+    fontWeight: "800",
+    marginBottom: 12,
+    color: "#1a1a1a"
+  },
+  description: { 
+    fontSize: 16, 
+    color: "#4a4a4a", 
+    marginBottom: 12,
+    lineHeight: 24
+  },
+  assignmentCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  uploadSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  comment: { 
+    padding: 16,
+    marginHorizontal: 12,
+    marginVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  ownComment: {
+    backgroundColor: '#e3f2fd',
+    borderLeftWidth: 4,
+    borderLeftColor: '#1976d2',
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  commentUser: { 
+    fontWeight: "700",
+    fontSize: 15,
+    color: '#1a1a1a'
+  },
+  commentTime: {
+    color: '#757575',
+    fontSize: 13,
+  },
+  inputContainer: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    padding: 12,
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  input: { 
+    flex: 1, 
+    borderWidth: 1, 
+    borderColor: "#e0e0e0", 
+    borderRadius: 12,
+    padding: 12,
+    marginRight: 8,
+    backgroundColor: '#ffffff',
+    fontSize: 15
+  },
+  addButton: { 
+    backgroundColor: "#1976d2", 
+    padding: 12, 
+    borderRadius: 12,
+    minWidth: 80,
+    alignItems: 'center'
+  },
+  addButtonText: { 
+    color: "#fff", 
+    fontWeight: "600",
+    fontSize: 15
+  },
+  submitButton: {
+    backgroundColor: '#2e7d32',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  viewButton: {
+    backgroundColor: '#1976d2',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  viewButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  submissionDetails: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#e8f5e9',
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2e7d32',
+  },
   scrollContainer: {
     flex: 1,
     backgroundColor: "#f8f9fa",
@@ -532,5 +759,47 @@ const styles = StyleSheet.create({
     color: '#1b5e20',
     fontSize: 14,
     marginTop: 5,
+  },
+  replaceContainer: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    width: '100%',
+  },
+  replaceButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  replaceButton: {
+    backgroundColor: '#fd7e14',
+    padding: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 10,
+    alignItems: 'center',
+  },
+  replaceButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  replaceFileButton: {
+    backgroundColor: '#fd7e14',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  replaceFileButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  supportedFormats: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 10,
+    textAlign: 'center',
   },
 });
