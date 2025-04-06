@@ -1,33 +1,21 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_BASE_URL } from "../constants";
 import { useRouter } from "expo-router";
 
 const Attendance = () => {
-    const [teacherName, setTeacherName] = useState<string | null>(null);
     const [courses, setCourses] = useState<{ _id: string; courseName: string }[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
     useEffect(() => {
-        const fetchTeacherData = async () => {
+        const fetchCourses = async () => {
             try {
-                const name = await AsyncStorage.getItem("loggedInUser");
-                if (name) {
-                    setTeacherName(name);
-                    fetchCourses(name);
-                }
-            } catch (error) {
-                setError("Error retrieving teacher name.");
-            }
-        };
-
-        const fetchCourses = async (teacherUsername: string) => {
-            try {
-                const response = await axios.get(`${API_BASE_URL}/courses?teacher=${teacherUsername}`);
+                const teacher = await AsyncStorage.getItem("loggedInUser");
+                const response = await axios.get(`${API_BASE_URL}/courses?teacher=${teacher}`);
                 setCourses(response.data);
             } catch (err) {
                 setError("Failed to fetch courses. Please try again.");
@@ -36,34 +24,35 @@ const Attendance = () => {
             }
         };
 
-        fetchTeacherData();
+        fetchCourses();
     }, []);
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Mark Attendance</Text>
-            {teacherName && <Text style={styles.teacher}>Teacher: {teacherName}</Text>}
+            <View style={styles.headerContainer}>
+                <Text style={styles.title}>Mark Attendance</Text>
+                <Text style={styles.subtitle}>Select a course to mark attendance</Text>
+            </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color="#007AFF" />
+                <ActivityIndicator size="large" color="#007AFF" style={styles.loader} />
             ) : error ? (
                 <Text style={styles.error}>{error}</Text>
             ) : (
-                <>
-                    <Text style={styles.subtitle}>Select a Course:</Text>
-                    <FlatList
-                        data={courses}
-                        keyExtractor={(item) => item._id}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.courseItem}
-                                onPress={() => router.push(`/attendanceMarker?courseId=${item._id}&courseName=${item.courseName}`)}
-                            >
-                                <Text style={styles.course}>{item.courseName}</Text>
-                            </TouchableOpacity>
-                        )}
-                    />
-                </>
+                <ScrollView 
+                    contentContainerStyle={styles.courseContainer}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {courses.map((item) => (
+                        <TouchableOpacity
+                            key={item._id}
+                            style={styles.coursePill}
+                            onPress={() => router.push(`/attendanceMarker?courseId=${item._id}&courseName=${item.courseName}`)}
+                        >
+                            <Text style={styles.coursePillText}>{item.courseName}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             )}
         </View>
     );
@@ -72,54 +61,65 @@ const Attendance = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#f8f9fa',
+    },
+    headerContainer: {
+        backgroundColor: '#fff',
         padding: 20,
-        backgroundColor: '#f5f5f5',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e9ecef',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 3,
     },
     title: {
         fontSize: 28,
-        fontWeight: "bold",
-        color: '#2c3e50',
-        textAlign: 'center',
-        marginVertical: 20,
-    },
-    teacher: {
-        fontSize: 18,
-        color: '#34495e',
-        marginBottom: 20,
-        textAlign: 'center',
+        fontWeight: "700",
+        color: '#1a1a1a',
+        marginBottom: 8,
     },
     subtitle: {
-        fontSize: 20,
-        marginVertical: 15,
-        color: '#2c3e50',
-        fontWeight: '600',
-        textAlign: 'center',
+        fontSize: 16,
+        color: '#6c757d',
+        fontWeight: '400',
     },
-    courseItem: {
-        backgroundColor: 'white',
+    loader: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    courseContainer: {
         padding: 20,
-        marginVertical: 8,
-        marginHorizontal: 16,
-        borderRadius: 12,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.23,
-        shadowRadius: 2.62,
-        elevation: 4,
+        paddingTop: 10,
     },
-    course: {
-        fontSize: 18,
-        color: '#2c3e50',
+    coursePill: {
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderRadius: 12,
+        backgroundColor: '#fff',
+        marginVertical: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+    },
+    coursePillText: {
+        color: '#1a1a1a',
+        fontWeight: '600',
+        fontSize: 16,
         textAlign: 'center',
     },
     error: {
-        color: '#e74c3c',
+        color: '#dc3545',
         textAlign: 'center',
-        marginTop: 15,
+        marginTop: 20,
         fontSize: 16,
+        padding: 20,
     },
 });
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, View, StyleSheet, TextInput, TouchableOpacity, Alert, Modal, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Text, View, StyleSheet, TextInput, TouchableOpacity, Alert, Modal, ActivityIndicator, Animated, KeyboardAvoidingView, Platform, ScrollView, ImageBackground } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from "../constants";
 import { LinearGradient } from 'expo-linear-gradient';
@@ -208,211 +208,219 @@ export default function SignUp() {
   }
 
   return (
-    <LinearGradient colors={["#1a237e", "#534bae", "#ffffff"]} style={styles.background}>
-      <SuccessModal />
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoid}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
+    <ImageBackground
+      source={require("../assets/background.png")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.container}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.keyboardAvoid}
         >
-          <View style={styles.container}>
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>Create Account</Text>
-              <Text style={styles.subtitle}>Sign in to access PU Student Sphere.</Text>
-            </View>
-            
-            <View style={styles.inputWrapper}>
-              {isEmailValid !== null && (
-                <Text style={[
-                  styles.floatingValidation, 
-                  { color: isEmailValid ? '#4CAF50' : '#FF5252' }
-                ]}>
-                  {isEmailValid ? 'Valid email address' : 'Invalid email address'}
-                </Text>
-              )}
-              <View style={styles.inputContainer}>
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="Email" 
-                  value={email} 
-                  onChangeText={handleEmailChange}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                />
+          <ScrollView 
+            contentContainerStyle={styles.scrollContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.contentContainer}>
+              <View style={styles.topSection}>
+                <Text style={styles.title}>Create Account</Text>
               </View>
-            </View>
 
-            <View style={styles.inputWrapper}>
-              {!isCheckingUsername && isUsernameAvailable !== null && (
-                <Text style={[
-                  styles.floatingValidation,
-                  { color: isUsernameAvailable ? '#4CAF50' : '#FF5252' }
-                ]}>
-                  {isUsernameAvailable ? 'Username is available' : 'Username is already taken'}
-                </Text>
-              )}
-              <View style={styles.inputContainer}>
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="Username" 
-                  value={signUpUsername} 
-                  onChangeText={(text) => {
-                    setSignUpUsername(text);
-                    checkUsername(text);
-                  }}
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputWrapper}>
-              {isPasswordValid !== null && (
-                <Text style={[
-                  styles.floatingValidation,
-                  { color: isPasswordValid ? '#4CAF50' : '#FF5252' }
-                ]}>
-                  {isPasswordValid ? 
-                    'Password meets requirements' : 
-                    'Password must be at least 8 characters with one special character'
-                  }
-                </Text>
-              )}
-              <View style={styles.inputContainer}>
-                <View style={styles.passwordInnerContainer}>
-                  <TextInput 
-                    style={styles.passwordInput} 
-                    placeholder="Password" 
-                    secureTextEntry={!showSignUpPassword} 
-                    value={signUpPassword} 
-                    onChangeText={handlePasswordChange} 
-                  />
-                  <TouchableOpacity onPress={() => setShowSignUpPassword(!showSignUpPassword)} style={styles.eyeButton}>
-                    <Ionicons name={showSignUpPassword ? 'eye-off' : 'eye'} size={24} color="gray" />
-                  </TouchableOpacity>
+              <View style={styles.bottomSection}>
+                <View style={styles.inputWrapper}>
+                  {isEmailValid !== null && (
+                    <Text style={[
+                      styles.floatingValidation, 
+                      { color: isEmailValid ? '#4CAF50' : '#FF5252' }
+                    ]}>
+                      {isEmailValid ? 'Valid email address' : 'Invalid email address'}
+                    </Text>
+                  )}
+                  <View style={styles.inputContainer}>
+                    <TextInput 
+                      style={styles.input} 
+                      placeholder="Email" 
+                      value={email} 
+                      onChangeText={handleEmailChange}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoComplete="email"
+                    />
+                  </View>
                 </View>
-              </View>
-            </View>
 
-            <View style={styles.inputWrapper}>
-              {confirmPassword && signUpPassword !== confirmPassword && (
-                <Text style={[
-                  styles.floatingValidation,
-                  { color: '#FF5252' }
-                ]}>
-                  Passwords do not match
-                </Text>
-              )}
-              <View style={styles.inputContainer}>
-                <View style={styles.passwordInnerContainer}>
-                  <TextInput 
-                    style={styles.passwordInput} 
-                    placeholder="Confirm Password" 
-                    secureTextEntry={!showConfirmPassword} 
-                    value={confirmPassword} 
-                    onChangeText={setConfirmPassword} 
-                  />
-                  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeButton}>
-                    <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={24} color="gray" />
-                  </TouchableOpacity>
+                <View style={styles.inputWrapper}>
+                  {!isCheckingUsername && isUsernameAvailable !== null && (
+                    <Text style={[
+                      styles.floatingValidation,
+                      { color: isUsernameAvailable ? '#4CAF50' : '#FF5252' }
+                    ]}>
+                      {isUsernameAvailable ? 'Username is available' : 'Username is already taken'}
+                    </Text>
+                  )}
+                  <View style={styles.inputContainer}>
+                    <TextInput 
+                      style={styles.input} 
+                      placeholder="Username" 
+                      value={signUpUsername} 
+                      onChangeText={(text) => {
+                        setSignUpUsername(text);
+                        checkUsername(text);
+                      }}
+                      autoCapitalize="none"
+                    />
+                  </View>
                 </View>
+
+                <View style={styles.inputWrapper}>
+                  {isPasswordValid !== null && (
+                    <Text style={[
+                      styles.floatingValidation,
+                      { color: isPasswordValid ? '#4CAF50' : '#FF5252' }
+                    ]}>
+                      {isPasswordValid ? 
+                        'Password meets requirements' : 
+                        'Password must be at least 8 characters with one special character'
+                      }
+                    </Text>
+                  )}
+                  <View style={styles.inputContainer}>
+                    <View style={styles.passwordInnerContainer}>
+                      <TextInput 
+                        style={styles.passwordInput} 
+                        placeholder="Password" 
+                        secureTextEntry={!showSignUpPassword} 
+                        value={signUpPassword} 
+                        onChangeText={handlePasswordChange} 
+                      />
+                      <TouchableOpacity onPress={() => setShowSignUpPassword(!showSignUpPassword)} style={styles.eyeButton}>
+                        <Ionicons name={showSignUpPassword ? 'eye-off' : 'eye'} size={24} color="gray" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.inputWrapper}>
+                  {confirmPassword && signUpPassword !== confirmPassword && (
+                    <Text style={[
+                      styles.floatingValidation,
+                      { color: '#FF5252' }
+                    ]}>
+                      Passwords do not match
+                    </Text>
+                  )}
+                  <View style={styles.inputContainer}>
+                    <View style={styles.passwordInnerContainer}>
+                      <TextInput 
+                        style={styles.passwordInput} 
+                        placeholder="Confirm Password" 
+                        secureTextEntry={!showConfirmPassword} 
+                        value={confirmPassword} 
+                        onChangeText={setConfirmPassword} 
+                      />
+                      <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeButton}>
+                        <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={24} color="gray" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.segmentedWrapper}>
+                  <View style={styles.segmentedControl}>
+                    <Animated.View style={[
+                      styles.segmentSlider,
+                      {
+                        transform: [{
+                          translateX: slideAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, 136] // Adjusted to exact segment width
+                          })
+                        }]
+                      }
+                    ]} />
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setSignUpRole('teacher');
+                        Animated.spring(slideAnim, {
+                          toValue: 0,
+                          useNativeDriver: true,
+                          friction: 12,
+                          tension: 100
+                        }).start();
+                      }} 
+                      style={[
+                        styles.segment,
+                        signUpRole === 'teacher' && styles.activeSegment
+                      ]}
+                    >
+                      <Ionicons 
+                        name="school" 
+                        size={20} 
+                        color={signUpRole === 'teacher' ? "#fff" : "#666"} 
+                        style={styles.segmentIcon}
+                      />
+                      <Text style={[
+                        styles.segmentText,
+                        signUpRole === 'teacher' && styles.segmentTextSelected
+                      ]}>Teacher</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setSignUpRole('student');
+                        Animated.spring(slideAnim, {
+                          toValue: 1,
+                          useNativeDriver: true,
+                          friction: 12,
+                          tension: 100
+                        }).start();
+                      }} 
+                      style={[
+                        styles.segment,
+                        signUpRole === 'student' && styles.activeSegment
+                      ]}
+                    >
+                      <Ionicons 
+                        name="person" 
+                        size={20} 
+                        color={signUpRole === 'student' ? "#fff" : "#666"} 
+                        style={styles.segmentIcon}
+                      />
+                      <Text style={[
+                        styles.segmentText,
+                        signUpRole === 'student' && styles.segmentTextSelected
+                      ]}>Student</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {error && (
+                  <Text style={styles.errorText}>{error}</Text>
+                )}
+                {isSignUpLoading ? (
+                  <ActivityIndicator size="large" color="#007bff" />
+                ) : (
+                  <TouchableOpacity style={styles.loginButtonContainer} onPress={handleSignUp}>
+                    <LinearGradient 
+                      colors={["#1a237e", "#534bae"]} 
+                      style={styles.loginButton}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.loginButtonText}>Create Account</Text>
+                      <Ionicons name="arrow-forward" size={24} color="#fff" style={styles.buttonIcon} />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
-
-            <View style={styles.segmentedWrapper}>
-              <View style={styles.segmentedControl}>
-                <Animated.View style={[
-                  styles.segmentSlider,
-                  {
-                    transform: [{
-                      translateX: slideAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, 136] // Adjusted to exact segment width
-                      })
-                    }]
-                  }
-                ]} />
-                <TouchableOpacity 
-                  onPress={() => {
-                    setSignUpRole('teacher');
-                    Animated.spring(slideAnim, {
-                      toValue: 0,
-                      useNativeDriver: true,
-                      friction: 12,
-                      tension: 100
-                    }).start();
-                  }} 
-                  style={[
-                    styles.segment,
-                    signUpRole === 'teacher' && styles.activeSegment
-                  ]}
-                >
-                  <Ionicons 
-                    name="school" 
-                    size={20} 
-                    color={signUpRole === 'teacher' ? "#fff" : "#666"} 
-                    style={styles.segmentIcon}
-                  />
-                  <Text style={[
-                    styles.segmentText,
-                    signUpRole === 'teacher' && styles.segmentTextSelected
-                  ]}>Teacher</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  onPress={() => {
-                    setSignUpRole('student');
-                    Animated.spring(slideAnim, {
-                      toValue: 1,
-                      useNativeDriver: true,
-                      friction: 12,
-                      tension: 100
-                    }).start();
-                  }} 
-                  style={[
-                    styles.segment,
-                    signUpRole === 'student' && styles.activeSegment
-                  ]}
-                >
-                  <Ionicons 
-                    name="person" 
-                    size={20} 
-                    color={signUpRole === 'student' ? "#fff" : "#666"} 
-                    style={styles.segmentIcon}
-                  />
-                  <Text style={[
-                    styles.segmentText,
-                    signUpRole === 'student' && styles.segmentTextSelected
-                  ]}>Student</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {error && (
-              <Text style={styles.errorText}>{error}</Text>
-            )}
-            {isSignUpLoading ? (
-              <ActivityIndicator size="large" color="#007bff" />
-            ) : (
-              <TouchableOpacity style={styles.loginButtonContainer} onPress={handleSignUp}>
-                <LinearGradient 
-                  colors={["#1a237e", "#534bae"]} 
-                  style={styles.loginButton}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.loginButtonText}>Create Account</Text>
-                  <Ionicons name="arrow-forward" size={24} color="#fff" style={styles.buttonIcon} />
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </LinearGradient>
+          </ScrollView>
+        </KeyboardAvoidingView>
+        
+        <SuccessModal />
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -428,22 +436,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    padding: 24,
-    paddingTop: 40, // Reduced from 60
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    margin: 16,
-    marginBottom: 24, // Added to ensure bottom content is visible
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   titleContainer: {
     alignSelf: 'flex-start',
@@ -452,12 +445,12 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   title: {
-    fontSize: 40,
-    fontFamily: 'Poppins_700Bold',
-    color: '#1a237e',
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 48,
+    color: '#ffffff',
+    fontFamily: "Poppins_700Bold",
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
   subtitle: {
     fontSize: 16,
@@ -505,13 +498,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   input: {
-    width: '100%',
-    padding: 16,
-    backgroundColor: 'white',
+    width: "85%",
+    padding: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 12,
-    fontFamily: 'Poppins_500Medium',
     fontSize: 16,
-    color: '#333',
+    fontFamily: "Poppins_500Medium",
   },
   validationText: {
     fontSize: 13,
@@ -688,5 +680,47 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_600SemiBold',
     color: '#333',
     textAlign: 'center',
+  },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
+    padding: 20,
+  },
+  topSection: {
+    paddingTop: 70,
+  },
+  bottomSection: {
+    width: "100%",
+    alignItems: "center",
+    gap: 16,
+    marginBottom: 40,
+  },
+  buttonWrapper: {
+    width: "85%",
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  button: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 18,
+    borderRadius: 12,
+  },
+  buttonText: {
+    color: "#FFF",
+    fontSize: 18,
+    fontFamily: "Poppins_500Medium",
+    letterSpacing: 0.8,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

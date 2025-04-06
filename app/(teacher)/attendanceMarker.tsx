@@ -1,28 +1,59 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Modal,
+} from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { API_BASE_URL } from '../constants';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+interface Student {
+  _id: string;
+  username: string;
+}
+
+interface AttendanceRecord {
+  courseId: string;
+  courseName: string;
+  date: string;
+  students: Array<{
+    username: string;
+    present: boolean;
+  }>;
+}
 
 const AttendanceMarker = () => {
   const { courseId, courseName } = useLocalSearchParams();
-  const [students, setStudents] = useState<{ _id: string; username: string }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<Student[]>([]);
   const [attendance, setAttendance] = useState<{ [key: string]: boolean }>({});
-  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [date, setDate] = useState(new Date());
+  const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
-  // Fetch students for the course
   const fetchStudents = async () => {
+    setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/reg_students/${courseId}/students`);
-      if (!res.ok) throw new Error('Failed to fetch students');
-
       const data = await res.json();
       setStudents(data);
-    } catch (error) {
-      Alert.alert('Error', 'Could not fetch students.');
+      const initialAttendance: { [key: string]: boolean } = {};
+      data.forEach((student: Student) => {
+        initialAttendance[student._id] = false;
+      });
+      setAttendance(initialAttendance);
+    } catch (err) {
+      Alert.alert('Error', 'Failed to load students');
     } finally {
       setLoading(false);
     }
@@ -30,102 +61,189 @@ const AttendanceMarker = () => {
 
   useEffect(() => {
     fetchStudents();
-  }, [courseId]);
+  }, []);
+
+  const markAll = (status: boolean) => {
+    setAttendance((prev) => {
+      const newAttendance = { ...prev };
+      students.forEach((student) => {
+        newAttendance[student._id] = status;
+      });
+      return newAttendance;
+    });
+  };
 
   const toggleAttendance = (studentId: string) => {
-    setAttendance((prev) => ({
-      ...prev,
-      [studentId]: !prev[studentId],
-    }));
-  };
-
-  const markAllAttendance = async (status: 'present' | 'absent') => {
-    const formattedDate = date.toISOString().split('T')[0];
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/attendance/markAll/${courseId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          date: formattedDate, 
-          status 
-        }),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        if (error.error === 'Attendance already marked for this date') {
-          Alert.alert('Error', 'Attendance has already been marked for this date');
-        } else {
-          throw new Error('Failed to mark attendance');
-        }
-        return;
-      }
-
-      setAttendance(
-        students.reduce((acc, student) => ({
-          ...acc,
-          [student._id]: status === 'present'
-        }), {})
-      );
-      Alert.alert('Success', `All students marked as ${status}`);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to mark attendance for all students.');
-    }
-  };
-
-  const clearAllAttendance = () => {
-    setAttendance({});
+    setAttendance((prev) => {
+      const newAttendance = { ...prev };
+      newAttendance[studentId] = !prev[studentId];
+      return newAttendance;
+    });
   };
 
   const submitAttendance = async () => {
-    const formattedDate = date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-    const attendanceData = students.map((student) => ({
-      studentId: student._id,
-      present: attendance[student._id] || false,
-    }));
+    const formattedDate = date.toISOString().split('T')[0];
+    // Format records using username instead of _id
+    const validRecords = students
+      .filter(student => attendance[student._id] !== undefined)
+      .map(student => ({
+        username: student.username, // Use username instead of _id
+        status: attendance[student._id],
+      }));
+
+    if (validRecords.length === 0) {
+      Alert.alert('Error', 'No attendance records to submit');
+      return;
+    }
+
+    const payload = {
+      course: courseId,
+      date: formattedDate,
+      records: validRecords,
+    };
+
+    console.log('Submitting payload:', payload); // For debugging
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/attendance/mark/${courseId}`, {
+      const res = await fetch(`${API_BASE_URL}/attendance/mark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          date: formattedDate, 
-          attendance: attendanceData 
-        }),
+        body: JSON.stringify(payload),
       });
 
+      const result = await res.json();
+      
       if (!res.ok) {
-        const error = await res.json();
-        if (error.error === 'Attendance already marked for this date') {
-          Alert.alert('Error', 'Attendance has already been marked for this date');
-        } else {
-          throw new Error('Failed to mark attendance');
-        }
-        return;
+        throw new Error(result.error || 'Failed to mark attendance');
       }
 
-      Alert.alert('Success', 'Attendance marked successfully');
-      setIsStudentModalOpen(false);
-      clearAllAttendance();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to mark attendance.');
+      Alert.alert('Success', result.message);
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Submission failed');
     }
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
+  const fetchAttendanceByDate = async (selectedDate: Date) => {
+    setLoading(true);
+    try {
+      const formattedDate = selectedDate.toISOString().split('T')[0];
+      const response = await fetch(
+        `${API_BASE_URL}/attendance/date/${formattedDate}?courseId=${courseId}`
+      );
+      const data = await response.json();
+      setAttendanceData(data);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to fetch attendance records');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
       setDate(selectedDate);
+      if (isViewMode) {
+        fetchAttendanceByDate(selectedDate);
+      }
     }
   };
 
+  const handleIndividualMarking = (studentId: string, status: boolean) => {
+    setAttendance((prev) => {
+      const newAttendance = { ...prev };
+      newAttendance[studentId] = status;
+      return newAttendance;
+    });
+    setShowEditModal(false);
+    setSelectedStudent(null);
+  };
+
+  const renderViewMode = () => (
+    <>
+      {loading ? (
+        <ActivityIndicator size="large" color="#0000ff" />
+      ) : (
+        <FlatList
+          contentContainerStyle={styles.listContainer}
+          data={attendanceData}
+          keyExtractor={(item) => `${item.courseId}-${item.date}`} // Ensure unique key
+          renderItem={({ item }) => (
+            <View style={styles.courseCard}>
+              <Text style={styles.courseTitle}>{item.courseName}</Text>
+              <FlatList
+                data={item.students}
+                keyExtractor={(student) => `${student.username}-${item.date}`} // Ensure unique key
+                renderItem={({ item: student }) => (
+                  <View style={styles.studentRow}>
+                    <Text style={styles.studentName}>{student.username}</Text>
+                    <Text
+                      style={[
+                        styles.status,
+                        { color: student.present ? '#27ae60' : '#c0392b' },
+                      ]}
+                    >
+                      {student.present ? '✓ Present' : '✗ Absent'}
+                    </Text>
+                  </View>
+                )}
+              />
+            </View>
+          )}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No attendance records found</Text>
+          }
+        />
+      )}
+    </>
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Mark Attendance - {courseName}</Text>
+      <View style={styles.header}>
+        <Text style={styles.heading}>Attendance - {courseName}</Text>
+        <View style={styles.segmentedControl}>
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              isViewMode && styles.activeSegmentButton,
+            ]}
+            onPress={() => setIsViewMode(true)}
+          >
+            <Text
+              style={[
+                styles.segmentButtonText,
+                isViewMode && styles.activeSegmentButtonText,
+              ]}
+            >
+              View Mode
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmentButton,
+              !isViewMode && styles.activeSegmentButton,
+            ]}
+            onPress={() => setIsViewMode(false)}
+          >
+            <Text
+              style={[
+                styles.segmentButtonText,
+                !isViewMode && styles.activeSegmentButtonText,
+              ]}
+            >
+              Mark Mode
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-      <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-        <Text style={styles.buttonText}>Select Date: {date.toLocaleDateString()}</Text>
+      <TouchableOpacity
+        style={styles.dateButton}
+        onPress={() => setShowDatePicker(true)}
+      >
+        <MaterialCommunityIcons name="calendar" size={20} color="#fff" />
+        <Text style={styles.dateText}>{date.toDateString()}</Text>
       </TouchableOpacity>
 
       {showDatePicker && (
@@ -133,77 +251,89 @@ const AttendanceMarker = () => {
           value={date}
           mode="date"
           display="default"
-          onChange={onDateChange}
+          onChange={handleDateChange}
         />
       )}
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#007AFF" />
+      {isViewMode ? (
+        renderViewMode()
       ) : (
-        <TouchableOpacity style={styles.button} onPress={() => setIsStudentModalOpen(true)}>
-          <Text style={styles.buttonText}>Mark Attendance</Text>
-        </TouchableOpacity>
-      )}
-
-      <Modal visible={isStudentModalOpen} animationType="slide">
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Mark Attendance</Text>
-          <Text style={styles.dateText}>Date: {date.toLocaleDateString()}</Text>
-          
-          <View style={styles.buttonContainer}>
+        <>
+          <View style={styles.markButtons}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.presentButton]}
-              onPress={() => markAllAttendance('present')}
+              style={[styles.markBtn, { backgroundColor: '#2ecc71' }]}
+              onPress={() => markAll(true)}
             >
-              <Text style={styles.buttonText}>All Present</Text>
+              <Text style={styles.markBtnText}>Mark All Present</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.actionButton, styles.absentButton]}
-              onPress={() => markAllAttendance('absent')}
+              style={[styles.markBtn, { backgroundColor: '#e74c3c' }]}
+              onPress={() => markAll(false)}
             >
-              <Text style={styles.buttonText}>All Absent</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.clearButton]}
-              onPress={clearAllAttendance}
-            >
-              <Text style={styles.buttonText}>Clear All</Text>
+              <Text style={styles.markBtnText}>Mark All Absent</Text>
             </TouchableOpacity>
           </View>
-
-          <FlatList
-            data={students}
-            keyExtractor={(item) => item._id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.studentItem,
-                  attendance[item._id] ? styles.presentItem : styles.absentItem
-                ]}
-                onPress={() => toggleAttendance(item._id)}
-              >
-                <Text style={styles.studentName}>{item.username}</Text>
-                <View style={styles.statusContainer}>
-                  <Text style={attendance[item._id] ? styles.presentText : styles.absentText}>
-                    {attendance[item._id] ? '✔ Present' : '✘ Absent'}
-                  </Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#2980b9" />
+          ) : (
+            <FlatList
+              contentContainerStyle={styles.listContainer}
+              data={students}
+              keyExtractor={(item) => item._id} // Ensure unique key
+              renderItem={({ item }) => (
+                <View style={[
+                  styles.studentCard,
+                  attendance[item._id] ? styles.presentCard : styles.absentCard,
+                ]}>
+                  <TouchableOpacity
+                    style={styles.studentCardContent}
+                    onPress={() => toggleAttendance(item._id)}
+                  >
+                    <Text style={styles.studentText}>{item.username}</Text>
+                    <Text style={styles.statusText}>
+                      {attendance[item._id] ? '✔ Present' : '✘ Absent'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
+              )}
+            />
+          )}
+          <TouchableOpacity style={styles.submitBtn} onPress={submitAttendance}>
+            <Text style={styles.submitText}>Submit Attendance</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
+      <Modal
+        visible={showEditModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              Mark Attendance for {selectedStudent?.username}
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.presentButton]}
+                onPress={() => selectedStudent && handleIndividualMarking(selectedStudent._id, true)}
+              >
+                <Text style={styles.modalButtonText}>Present</Text>
               </TouchableOpacity>
-            )}
-          />
-          
-          <View style={styles.bottomButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.absentButton]}
+                onPress={() => selectedStudent && handleIndividualMarking(selectedStudent._id, false)}
+              >
+                <Text style={styles.modalButtonText}>Absent</Text>
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
-              style={[styles.actionButton, styles.submitButton]}
-              onPress={submitAttendance}
+              style={styles.cancelButton}
+              onPress={() => setShowEditModal(false)}
             >
-              <Text style={styles.buttonText}>Submit Attendance</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.closeButton]}
-              onPress={() => setIsStudentModalOpen(false)}
-            >
-              <Text style={styles.buttonText}>Cancel</Text>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -212,136 +342,207 @@ const AttendanceMarker = () => {
   );
 };
 
+export default AttendanceMarker;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#f5f5f5',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    textAlign: 'center',
-    marginVertical: 20,
-  },
-  button: {
-    backgroundColor: '#3498db',
-    paddingVertical: 15,
-    paddingHorizontal: 25,
-    borderRadius: 5,
-    marginVertical: 10,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  dateButton: {
-    backgroundColor: '#f39c12',
-    paddingVertical: 15,
-    paddingHorizontal: 25,
-    borderRadius: 5,
-    marginBottom: 20,
-    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#ffffff',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
     padding: 20,
+    borderRadius: 8,
+    width: '80%',
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  studentItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  studentName: {
     fontSize: 18,
-    color: '#2c3e50',
+    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
   },
-  present: {
-    backgroundColor: '#27ae60',
-    borderRadius: 5,
-  },
-  closeButton: {
-    marginTop: 20,
-    backgroundColor: '#e74c3c',
-    paddingVertical: 15,
-    paddingHorizontal: 25,
-    borderRadius: 5,
-    alignItems: 'center',
-  },
-  buttonContainer: {
+  modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
-    paddingHorizontal: 10,
+    marginTop: 16,
   },
-  actionButton: {
+  modalButton: {
     flex: 1,
-    paddingVertical: 12,
+    padding: 12,
     borderRadius: 8,
-    marginHorizontal: 4,
-    alignItems: 'center',
+    marginHorizontal: 8,
   },
   presentButton: {
-    backgroundColor: '#27ae60',
+    backgroundColor: '#2ecc71',
   },
   absentButton: {
     backgroundColor: '#e74c3c',
   },
-  clearButton: {
-    backgroundColor: '#7f8c8d',
+  modalButtonText: {
+    color: '#ffffff',
+    textAlign: 'center',
+    fontWeight: '500',
   },
-  submitButton: {
-    backgroundColor: '#2ecc71',
-    flex: 2,
+  cancelButton: {
+    marginTop: 16,
+    padding: 12,
   },
-  presentItem: {
-    backgroundColor: 'rgba(39, 174, 96, 0.1)',
-    borderLeftWidth: 4,
-    borderLeftColor: '#27ae60',
+  cancelButtonText: {
+    color: '#666666',
+    textAlign: 'center',
   },
-  absentItem: {
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-    borderLeftWidth: 4,
-    borderLeftColor: '#e74c3c',
+  header: {
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e6e6e6',
+    marginBottom: 16,
   },
-  statusContainer: {
-    borderRadius: 4,
+  heading: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 16,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
     padding: 4,
   },
-  presentText: {
-    color: '#27ae60',
-    fontWeight: 'bold',
+  segmentButton: {
+    flex: 1,
+    padding: 8,
+    alignItems: 'center',
+    borderRadius: 6,
   },
-  absentText: {
-    color: '#e74c3c',
-    fontWeight: 'bold',
+  activeSegmentButton: {
+    backgroundColor: '#2196F3',
+  },
+  segmentButtonText: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  activeSegmentButtonText: {
+    color: '#ffffff',
+    fontWeight: '500',
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2196F3',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
   },
   dateText: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    textAlign: 'center',
-    marginBottom: 15,
+    fontSize: 15,
+    color: '#ffffff',
+    marginLeft: 8,
   },
-  bottomButtons: {
+  studentCard: {
+    backgroundColor: '#ffffff',
+    padding: 14,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e6e6e6',
+  },
+  presentCard: {
+    backgroundColor: '#f0f9f0',
+    borderColor: '#4CAF50',
+  },
+  absentCard: {
+    backgroundColor: '#fef8f8',
+    borderColor: '#ff5252',
+  },
+  studentCardContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
-    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  studentText: {
+    fontSize: 15,
+    color: '#1a1a1a',
+  },
+  statusText: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  markButtons: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    gap: 8,
+  },
+  markBtn: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  markBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  submitBtn: {
+    backgroundColor: '#4CAF50',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+  },
+  submitText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  courseCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e6e6e6',
+  },
+  courseTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 12,
+  },
+  studentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  studentName: {
+    fontSize: 15,
+    color: '#1a1a1a',
+  },
+  status: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  listContainer: {
+    paddingBottom: 80,
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 15,
+    color: '#666666',
+    marginTop: 32,
   },
 });
-
-export default AttendanceMarker;

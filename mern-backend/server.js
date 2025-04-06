@@ -28,6 +28,10 @@ const toDoRoutes = require("./routes/todoRoutes");
 const resourceRoutes = require("./routes/resourceRoutes");
 const otpRoutes = require("./routes/otpRoutes");
 const liveClassRoutes=require("./routes/liveclass");
+const examRoutes=require("./routes/examRoutes");
+const chatRoutes = require('./routes/chatRoutes');
+
+
 
 
 
@@ -68,6 +72,10 @@ app.use("/api/todos", toDoRoutes);
 app.use("/api/resources", resourceRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/liveclass",liveClassRoutes);
+app.use("/api/exams",examRoutes);
+
+app.use('/api/chat', chatRoutes);
+
 
 
 

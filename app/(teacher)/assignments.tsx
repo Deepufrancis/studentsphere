@@ -7,9 +7,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Button,
+  ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Picker } from "@react-native-picker/picker";
 import { API_BASE_URL } from "../constants";
 import { useRouter } from "expo-router";
 
@@ -95,19 +95,70 @@ export default function Assignments() {
       <Text style={styles.header}>Assignments</Text>
 
       {/* Course Filter */}
-      <Picker selectedValue={selectedCourse} onValueChange={setSelectedCourse}>
-        <Picker.Item label="All Courses" value="" />
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.courseFilterScroll}
+      >
+        <TouchableOpacity
+          style={[
+            styles.coursePill,
+            selectedCourse === "" && styles.selectedCoursePill
+          ]}
+          onPress={() => setSelectedCourse("")}
+        >
+          <Text style={[
+            styles.coursePillText,
+            selectedCourse === "" && styles.selectedPillText
+          ]}>All Courses</Text>
+        </TouchableOpacity>
         {filteredCourses.map(course => (
-          <Picker.Item key={course._id} label={course.courseName} value={course._id} />
+          <TouchableOpacity
+            key={course._id}
+            style={[
+              styles.coursePill,
+              selectedCourse === course._id && styles.selectedCoursePill
+            ]}
+            onPress={() => setSelectedCourse(course._id)}
+          >
+            <Text style={[
+              styles.coursePillText,
+              selectedCourse === course._id && styles.selectedPillText
+            ]}>{course.courseName}</Text>
+          </TouchableOpacity>
         ))}
-      </Picker>
+      </ScrollView>
 
       {/* Sorting Button */}
-      <View style={styles.sortButtonContainer}>
-        <Button
-          title={sortOrder === "asc" ? "Sort by Newest" : "Sort by Oldest"}
-          onPress={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-        />
+      <View style={styles.segmentedControlContainer}>
+        <View style={styles.segmentedControl}>
+          <TouchableOpacity
+            style={[
+              styles.segmentedButton,
+              sortOrder === "asc" && styles.segmentedButtonActive,
+              { borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }
+            ]}
+            onPress={() => setSortOrder("asc")}
+          >
+            <Text style={[
+              styles.segmentedButtonText,
+              sortOrder === "asc" && styles.segmentedButtonTextActive
+            ]}>Sort by Oldest</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.segmentedButton,
+              sortOrder === "desc" && styles.segmentedButtonActive,
+              { borderTopRightRadius: 8, borderBottomRightRadius: 8 }
+            ]}
+            onPress={() => setSortOrder("desc")}
+          >
+            <Text style={[
+              styles.segmentedButtonText,
+              sortOrder === "desc" && styles.segmentedButtonTextActive
+            ]}>Sort by Newest</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Assignments List */}
@@ -165,6 +216,69 @@ const styles = StyleSheet.create({
   assignmentCourse: { fontSize: 14, fontWeight: "bold" },
   cardContent: {
     flex: 1,
+  },
+  courseFilterScroll: {
+    flexGrow: 0,
+    marginBottom: 15,
+  },
+  coursePill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#007AFF',
+    backgroundColor: 'rgba(0,122,255,0.05)',
+    marginRight: 8,
+  },
+  selectedCoursePill: {
+    backgroundColor: '#007AFF',
+  },
+  coursePillText: {
+    color: '#007AFF',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  selectedPillText: {
+    color: '#fff',
+  },
+  segmentedControlContainer: {
+    paddingHorizontal: 10,
+    marginBottom: 15,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f1f1',
+    borderRadius: 8,
+    padding: 2,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  segmentedButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentedButtonActive: {
+    backgroundColor: '#fff',
+    borderRadius: 6,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  segmentedButtonText: {
+    color: '#666',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  segmentedButtonTextActive: {
+    color: '#007AFF',
   },
 });
 

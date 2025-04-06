@@ -1,46 +1,52 @@
-const express = require('express');
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const File = require("../models/resource");
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const Resource = require('../models/resource');
 
-// Configure multer for file storage
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/');
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname);
-    }
+  destination: "uploads",
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "_" + file.originalname);
+  },
+});
+const upload = multer({ storage });
+
+// Upload file
+router.post("/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).send("No file uploaded");
+    const newFile = new File({
+      filename: req.file.originalname,
+      path: req.file.path,
+      mimetype: req.file.mimetype,
+    });
+    await newFile.save();
+    res.json({ message: "File uploaded", fileId: newFile._id });
+  } catch (error) {
+    res.status(500).send("Upload failed");
+  }
 });
 
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB limit
-    }
+// List files
+router.get("/files", async (req, res) => {
+  try {
+    const files = await File.find({});
+    res.json(files);
+  } catch (error) {
+    res.status(500).send("Could not list files");
+  }
 });
 
-// POST route for file upload
-router.post('/upload', upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
+// Download file
+router.get("/download/:id", async (req, res) => {
+  try {
+    const file = await File.findById(req.params.id);
+    if (!file) return res.status(404).send("File not found");
+    res.download(path.resolve(file.path), file.filename);
+  } catch (error) {
+    res.status(500).send("Download failed");
+  }
+});
 
-        const resource = new Resource({
-            title: req.body.title,
-            description: req.body.description,
-            filePath: req.file.path,
-            fileType: path.extname(req.file.originalname).substring(1),
-            username: req.body.loggedInUser // Changed to match frontend field name
-        });
-
-        const savedResource = await resource.save();
-        res.status(201).json({ 
-            message: 'Resource uploaded successfully',
-            resource: savedResource 
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+module.exports = router;

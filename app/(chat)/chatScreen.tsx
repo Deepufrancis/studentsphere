@@ -1,157 +1,254 @@
-import { useEffect, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList } from "react-native";
+import { useEffect, useState, useRef } from "react";
+import { View, Text, TextInput, TouchableOpacity, FlatList, SafeAreaView, KeyboardAvoidingView, Platform, Alert, Pressable } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { io } from "socket.io-client";
+import axios from "axios";
 import { API_BASE_URL } from "../constants";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import { format } from 'date-fns';
 
 export default function ChatScreen() {
   const { username } = useLocalSearchParams();
-  const [socket, setSocket] = useState<any>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [messages, setMessages] = useState<{ sender: string; message: string }[]>([]);
+  const [messages, setMessages] = useState<{ sender: string; message: string, timestamp?: string, _id?: string }[]>([]);
   const [message, setMessage] = useState("");
+  const [loggedInUser, setLoggedInUser] = useState<string>("");
+  const flatListRef = useRef<FlatList>(null);
+  const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("Attempting to connect to:", API_BASE_URL);
-    const newSocket = io(API_BASE_URL, {
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      timeout: 10000,
-      transports: ['websocket', 'polling'],
-      forceNew: true
-    });
-
-    newSocket.on("connect", () => {
-      console.log("Socket connected successfully");
-      setIsConnected(true);
-      const chatRoom = `chat_${username}`;
-      newSocket.emit("joinRoom", chatRoom);
-    });
-
-    newSocket.on("disconnect", () => {
-      console.log("Socket disconnected");
-      setIsConnected(false);
-    });
-
-    newSocket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error.message);
-      setIsConnected(false);
-    });
-
-    newSocket.on("error", (error) => {
-      console.error("Socket error:", error);
-      alert("Chat error: " + error);
-    });
-
-    setSocket(newSocket);
-
-    newSocket.on("chatHistory", (history) => {
-      if (Array.isArray(history)) {
-        setMessages(history);
-      }
-    });
-
-    newSocket.on("receiveMessage", (data) => {
-      if (data && data.sender && data.message) {
-        setMessages((prevMessages) => [...prevMessages, data]);
-      }
-    });
-
-    return () => {
-      if (newSocket) {
-        newSocket.close();
+    const fetchMessages = async () => {
+      try {
+        const storedUsername = await AsyncStorage.getItem("loggedInUser");
+        if (storedUsername) {
+          setLoggedInUser(storedUsername);
+          const response = await axios.get(`${API_BASE_URL}/chat/${storedUsername}/${username}`);
+          setMessages(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching messages:", error);
       }
     };
+
+    fetchMessages();
   }, [username]);
 
-  const sendMessage = () => {
-    if (!isConnected || !socket) {
-      alert("Not connected to chat server");
-      return;
-    }
-
+  const sendMessage = async () => {
     if (message.trim() !== "") {
-      const chatRoom = `chat_${username}`;
-      const messageData = { room: chatRoom, sender: username, message: message.trim() };
-      
+      const newMessage = { sender: loggedInUser, receiver: username, message: message.trim() };
       try {
-        socket.emit("sendMessage", messageData, (acknowledgement: any) => {
-          if (!acknowledgement?.success) {
-            console.error("Send message failed:", acknowledgement?.error);
-            alert("Failed to send message");
-          }
-        });
+        await axios.post(`${API_BASE_URL}/chat/send`, newMessage);
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
         setMessage("");
       } catch (error) {
         console.error("Error sending message:", error);
-        alert("Error sending message");
       }
     }
   };
 
-  return (
-    <View style={{ flex: 1, padding: 20, backgroundColor: "#f5f5f5" }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-        <Text style={{ fontSize: 20, fontWeight: "bold" }}>Chat with {username}</Text>
-        <View style={{ 
-          width: 10, 
-          height: 10, 
-          borderRadius: 5, 
-          backgroundColor: isConnected ? "#2ecc71" : "#e74c3c" 
-        }} />
-      </View>
-      {!isConnected && (
-        <Text style={{ color: '#e74c3c', textAlign: 'center', marginBottom: 10 }}>
-          Connecting to chat server...
-        </Text>
-      )}
+  const handleDeleteMessage = async (messageId: string) => {
+    Alert.alert(
+      "Delete Message",
+      "Are you sure you want to delete this message?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await axios.delete(`${API_BASE_URL}/chat/${loggedInUser}/${username}/messages/${messageId}`);
+              setMessages(messages.filter(msg => msg._id !== messageId));
+            } catch (error) {
+              console.error("Error deleting message:", error);
+              Alert.alert("Error", "Failed to delete message");
+            }
+          }
+        }
+      ]
+    );
+  };
 
-      <FlatList
-        data={messages}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item }) => (
-          <View
+  const deleteMessage = async (messageId: string) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/chat/${loggedInUser}/${username}/messages/${messageId}`);
+      setMessages(messages.filter(msg => msg._id !== messageId));
+      setSelectedMessageId(null);
+    } catch (error) {
+      console.error("Error deleting message:", error);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (flatListRef.current && messages.length > 0) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const renderMessage = ({ item }: { item: any }) => (
+    <View style={{ marginBottom: 12 }}>
+      <Pressable
+        onLongPress={() => {
+          if (item.sender === loggedInUser) {
+            setSelectedMessageId(item._id);
+          }
+        }}
+        onPress={() => setSelectedMessageId(null)}
+        style={{
+          maxWidth: '80%',
+          alignSelf: item.sender === loggedInUser ? "flex-end" : "flex-start",
+        }}
+      >
+        {selectedMessageId === item._id && item.sender === loggedInUser && (
+          <TouchableOpacity
+            onPress={() => deleteMessage(item._id)}
             style={{
-              padding: 10,
-              backgroundColor: item.sender === username ? "#3498db" : "#95a5a6",
-              alignSelf: item.sender === username ? "flex-end" : "flex-start",
-              borderRadius: 10,
-              marginVertical: 5,
+              position: 'absolute',
+              top: -20,
+              right: item.sender === loggedInUser ? 0 : undefined,
+              left: item.sender === loggedInUser ? undefined : 0,
+              backgroundColor: '#ff4757',
+              borderRadius: 12,
+              padding: 4,
+              zIndex: 1,
             }}
           >
-            <Text style={{ color: "white", fontSize: 12 }}>{item.sender}</Text>
-            <Text style={{ color: "white" }}>{item.message}</Text>
-          </View>
+            <Ionicons name="trash-outline" size={16} color="white" />
+          </TouchableOpacity>
         )}
+        <View style={{
+          backgroundColor: item.sender === loggedInUser ? "#3498db" : "#f8fafc",
+          padding: 12,
+          borderRadius: 16,
+          borderBottomRightRadius: item.sender === loggedInUser ? 4 : 16,
+          borderBottomLeftRadius: item.sender === loggedInUser ? 16 : 4,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.1,
+          shadowRadius: 2,
+          elevation: 2,
+        }}>
+          <Text style={{ 
+            color: item.sender === loggedInUser ? "white" : "#2c3e50",
+            fontSize: 16,
+          }}>
+            {item.message}
+          </Text>
+        </View>
+        <Text style={{ 
+          fontSize: 11,
+          color: "#94a3b8",
+          marginTop: 4,
+          marginLeft: item.sender === loggedInUser ? 0 : 4,
+          marginRight: item.sender === loggedInUser ? 4 : 0,
+          textAlign: item.sender === loggedInUser ? 'right' : 'left'
+        }}>
+          {item.timestamp ? format(new Date(item.timestamp), 'h:mm a') : ''}
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f8fafc" }}>
+      {/* Simplified Header */}
+      <View style={{ 
+        padding: 16,
+        backgroundColor: 'white',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e2e8f0',
+        flexDirection: 'row',
+        alignItems: 'center'
+      }}>
+        <View style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: '#e1e8ff',
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 12,
+        }}>
+          <Text style={{ fontSize: 18, color: '#3498db' }}>
+            {String(username).charAt(0).toUpperCase()}
+          </Text>
+        </View>
+        <Text style={{ 
+          fontSize: 18, 
+          fontWeight: "600", 
+          color: "#2c3e50",
+          flex: 1 
+        }}>
+          {username}
+        </Text>
+      </View>
+
+      {/* Messages */}
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        keyExtractor={(item, index) => index.toString()}
+        contentContainerStyle={{ padding: 16 }}
+        renderItem={renderMessage}
+        onContentSizeChange={scrollToBottom}
       />
 
-      <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10 }}>
-        <TextInput
-          style={{
-            flex: 1,
-            borderWidth: 1,
-            borderColor: "#ddd",
-            padding: 10,
-            borderRadius: 5,
-            backgroundColor: "white",
-          }}
-          value={message}
-          onChangeText={setMessage}
-          placeholder="Type a message..."
-        />
-        <TouchableOpacity
-          onPress={sendMessage}
-          style={{
-            marginLeft: 10,
-            backgroundColor: "#2ecc71",
-            padding: 10,
-            borderRadius: 5,
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "bold" }}>Send</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      {/* Input Area */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        style={{
+          borderTopWidth: 1,
+          borderTopColor: '#e2e8f0',
+          padding: 16,
+          backgroundColor: 'white',
+        }}
+      >
+        <View style={{ 
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: "#f8fafc",
+          borderRadius: 24,
+          paddingHorizontal: 16,
+        }}>
+          <TextInput
+            style={{
+              flex: 1,
+              padding: 12,
+              fontSize: 16,
+              color: '#2c3e50',
+            }}
+            value={message}
+            onChangeText={setMessage}
+            placeholder="Type a message..."
+            placeholderTextColor="#94a3b8"
+            multiline
+          />
+          <TouchableOpacity
+            onPress={sendMessage}
+            style={{
+              backgroundColor: message.trim() ? "#3498db" : "#e2e8f0",
+              padding: 10,
+              borderRadius: 20,
+              width: 40,
+              height: 40,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+            disabled={!message.trim()}
+          >
+            <Ionicons 
+              name="send" 
+              size={20} 
+              color={message.trim() ? "white" : "#94a3b8"} 
+            />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

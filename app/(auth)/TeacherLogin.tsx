@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Modal,
   ActivityIndicator,
+  ImageBackground,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -55,60 +56,78 @@ export default function LoginTeacher() {
   };
 
   return (
-    <LinearGradient colors={["#1a237e", "#534bae", "#ffffff"]} style={styles.background}>
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Error</Text>
-            <Text style={styles.modalMessage}>{errorMessage}</Text>
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={styles.modalButtonText}>OK</Text>
-            </TouchableOpacity>
+    <ImageBackground
+      source={require("../assets/background.png")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.container}>
+        <View style={styles.contentContainer}>
+          <View style={styles.topSection}>
+            <Text style={styles.title}>Teacher Login</Text>
+          </View>
+
+          <View style={styles.bottomSection}>
+            <TextInput
+              style={styles.input}
+              placeholder="Username"
+              placeholderTextColor="#666"
+              value={username}
+              onChangeText={setUsername}
+            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Password"
+                placeholderTextColor="#666"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#4A90E2" />
+            ) : (
+              <TouchableOpacity onPress={handleLogin} style={styles.buttonWrapper}>
+                <LinearGradient
+                  colors={['#4A90E2', '#357ABD']}
+                  style={styles.button}
+                >
+                  <Text style={styles.buttonText}>Login</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
-      </Modal>
-      <View style={styles.contentContainer}>
-        <Text style={styles.title}>Teacher Login</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Username"
-          value={username}
-          onChangeText={setUsername}
-        />
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.passwordInput}
-            placeholder="Password"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-          />
-          <TouchableOpacity
-            onPress={() => setShowPassword(!showPassword)}
-            style={styles.eyeButton}
-          >
-            <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color="gray" />
-          </TouchableOpacity>
-        </View>
-        {isLoading ? (
-          <ActivityIndicator size="large" color="#1a237e" />
-        ) : (
-          <TouchableOpacity onPress={handleLogin} style={styles.loginButtonContainer}>
-            <LinearGradient colors={["#1a237e", "#534bae"]} style={styles.loginButton}>
-              <Text style={styles.loginButtonText}>Login</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
+
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={modalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Error</Text>
+              <Text style={styles.modalMessage}>{errorMessage}</Text>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
-    </LinearGradient>
+    </ImageBackground>
   );
 }
 
@@ -116,81 +135,85 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
   },
+  container: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
   contentContainer: {
     flex: 1,
-    margin: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    justifyContent: 'space-between',
+    padding: 20,
+  },
+  topSection: {
+    paddingTop: 70,
   },
   title: {
-    fontSize: 40,
-    color: '#1a237e',
+    fontSize: 48,
+    color: '#ffffff',
     fontFamily: "Poppins_700Bold",
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+  },
+  bottomSection: {
+    width: "100%",
+    alignItems: "center",
+    gap: 16,
     marginBottom: 40,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   input: {
-    width: "100%",
-    padding: 14,
-    backgroundColor: "#EAEAEA",
+    width: "85%",
+    padding: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 12,
-    marginBottom: 15,
+    fontSize: 16,
     fontFamily: "Poppins_500Medium",
+    marginBottom: 16,
   },
   passwordContainer: {
+    width: "85%",
     flexDirection: "row",
     alignItems: "center",
-    width: "100%",
-    backgroundColor: "#EAEAEA",
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 12,
-    marginBottom: 15,
-    paddingHorizontal: 10,
+    marginBottom: 24,
   },
   passwordInput: {
     flex: 1,
-    padding: 14,
+    padding: 18,
+    fontSize: 16,
     fontFamily: "Poppins_500Medium",
   },
   eyeButton: {
-    padding: 12,
+    padding: 18,
   },
-  loginButtonContainer: {
-    width: "100%",
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: '#000',
+  buttonWrapper: {
+    width: "85%",
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 2,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  loginButton: {
-    width: "100%",
-    padding: 18,
+  button: {
     alignItems: "center",
-    borderRadius: 16,
+    justifyContent: "center",
+    padding: 18,
+    borderRadius: 12,
   },
-  loginButtonText: {
-    color: "#fff",
+  buttonText: {
+    color: "#FFF",
     fontSize: 18,
-    fontFamily: "Poppins_700Bold",
-    letterSpacing: 0.5,
+    fontFamily: "Poppins_500Medium",
+    letterSpacing: 0.8,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   modalOverlay: {
     flex: 1,

@@ -6,9 +6,18 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from 'expo-image-picker';
 import axios from "axios";
 import { API_BASE_URL } from "../constants";
+import { Calendar } from 'react-native-calendars';
 
 const screenHeight = Dimensions.get("window").height;
 const DRAWER_WIDTH = 280; 
+
+interface Assignment {
+  _id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  courseId?: string;
+}
 
 export default function StudentNavbar() {
   const router = useRouter();
@@ -29,8 +38,13 @@ export default function StudentNavbar() {
   const [error, setError] = useState("");
   const [showProfilePicModal, setShowProfilePicModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-
+  const [showCalendar, setShowCalendar] = useState(false);
   const today = new Date();
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [selectedDateAssignments, setSelectedDateAssignments] = useState<Assignment[]>([]);
+  const [showAssignmentsModal, setShowAssignmentsModal] = useState(false);
+
   const day = today.toLocaleDateString("en-US", { weekday: "long" });
   const date = today.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
 
@@ -62,6 +76,18 @@ export default function StudentNavbar() {
       }
     };
     fetchProfile();
+  }, []);
+
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/assignments`);
+        setAssignments(response.data);
+      } catch (error) {
+        console.error("Error fetching assignments:", error);
+      }
+    };
+    fetchAssignments();
   }, []);
 
   const toggleDrawer = () => {
@@ -168,6 +194,51 @@ export default function StudentNavbar() {
     }
   };
 
+  const handleDateSelect = (date: any) => {
+    const selectedDateStr = new Date(date.timestamp).toISOString().split('T')[0];
+    const assignmentsForDate = assignments.filter(assignment => {
+      const dueDate = new Date(assignment.dueDate).toISOString().split('T')[0];
+      return dueDate === selectedDateStr;
+    });
+
+    if (assignmentsForDate.length > 0) {
+      setSelectedDateAssignments(assignmentsForDate);
+      setShowAssignmentsModal(true);
+    }
+    
+    setSelectedDate(new Date(date.timestamp));
+    setShowCalendar(false);
+  };
+
+  const getMarkedDates = () => {
+    const markedDates: any = {};
+    
+    // Mark selected date
+    markedDates[selectedDate.toISOString().split('T')[0]] = {
+      selected: true,
+      selectedColor: '#007AFF'
+    };
+
+    // Mark assignment due dates
+    assignments.forEach(assignment => {
+      const dueDate = new Date(assignment.dueDate).toISOString().split('T')[0];
+      // If date is already marked as selected, merge the dots
+      if (markedDates[dueDate]) {
+        markedDates[dueDate] = {
+          ...markedDates[dueDate],
+          dots: [{ color: '#FF3B30' }]
+        };
+      } else {
+        markedDates[dueDate] = {
+          marked: true,
+          dots: [{ color: '#FF3B30' }]
+        };
+      }
+    });
+
+    return markedDates;
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.navbar}>
@@ -176,16 +247,19 @@ export default function StudentNavbar() {
         </TouchableOpacity>
 
         <View style={styles.navIcons}>
-          <TouchableOpacity onPress={() => router.push("/notifications")}>
-            <Ionicons name="notifications-outline" size={30} color="black" />
-          </TouchableOpacity>
-          <View style={styles.datePill}>
+          
+          <TouchableOpacity 
+            style={styles.datePill}
+            onPress={() => setShowCalendar(true)}
+          >
             <Ionicons name="calendar-outline" size={20} color="#4a5568" style={styles.calendarIcon} />
             <View>
-              <Text style={styles.dayText}>{day}</Text>
-              <Text style={styles.dateText}>{date}</Text>
+              <Text style={styles.dayText}>{selectedDate.toLocaleDateString("en-US", { weekday: "long" })}</Text>
+              <Text style={styles.dateText}>
+                {selectedDate.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" })}
+              </Text>
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -428,6 +502,87 @@ export default function StudentNavbar() {
           </TouchableOpacity>
         </Modal>
       </Animated.View>
+
+      <Modal
+        transparent={true}
+        visible={showCalendar}
+        animationType="fade"
+        onRequestClose={() => setShowCalendar(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1} 
+          onPress={() => setShowCalendar(false)}
+        >
+          <View style={styles.calendarModal}>
+            <Calendar
+              onDayPress={handleDateSelect}
+              markedDates={getMarkedDates()}
+              theme={{
+                todayTextColor: '#007AFF',
+                selectedDayBackgroundColor: '#007AFF',
+                selectedDayTextColor: '#ffffff',
+                arrowColor: '#007AFF',
+                dotColor: '#FF3B30',
+                selectedDotColor: '#ffffff'
+              }}
+              markingType="multi-dot"
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        transparent={true}
+        visible={showAssignmentsModal}
+        animationType="fade"
+        onRequestClose={() => setShowAssignmentsModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1} 
+          onPress={() => setShowAssignmentsModal(false)}
+        >
+          <View style={styles.assignmentsModal}>
+            <View style={styles.assignmentsModalHeader}>
+              <View style={styles.modalTitleContainer}>
+                <Ionicons name="calendar" size={24} color="#007AFF" />
+                <Text style={styles.assignmentsModalTitle}>
+                  Due on {selectedDate.toLocaleDateString()}
+                </Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => setShowAssignmentsModal(false)}
+              >
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            {selectedDateAssignments.map((assignment, index) => (
+              <View key={assignment._id} style={styles.assignmentItem}>
+                <View style={styles.assignmentTimelineContainer}>
+                  <View style={styles.assignmentDot} />
+                  {index !== selectedDateAssignments.length - 1 && (
+                    <View style={styles.assignmentTimeline} />
+                  )}
+                </View>
+                <View style={styles.assignmentDetails}>
+                  <Text style={styles.assignmentTime}>
+                    {new Date(assignment.dueDate).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </Text>
+                  <Text style={styles.assignmentTitle}>{assignment.title}</Text>
+                  <Text style={styles.assignmentDescription} numberOfLines={2}>
+                    {assignment.description}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -829,5 +984,106 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     fontWeight: '500',
+  },
+  calendarModal: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 10,
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  assignmentsModal: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  assignmentsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  assignmentsModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a202c',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  assignmentItem: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+  },
+  assignmentTimelineContainer: {
+    alignItems: 'center',
+    marginRight: 15,
+    width: 20,
+  },
+  assignmentDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FF3B30',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 59, 48, 0.2)',
+  },
+  assignmentTimeline: {
+    width: 2,
+    flex: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 4,
+  },
+  assignmentDetails: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  assignmentTime: {
+    fontSize: 14,
+    color: '#FF3B30',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  assignmentTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a202c',
+    marginBottom: 6,
+  },
+  assignmentDescription: {
+    fontSize: 14,
+    color: '#4a5568',
+    lineHeight: 20,
   },
 });

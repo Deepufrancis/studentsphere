@@ -9,7 +9,7 @@ import {
   BackHandler,
 } from "react-native";
 import { useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFonts, Poppins_500Medium, Poppins_700Bold } from "@expo-google-fonts/poppins";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -19,7 +19,7 @@ export default function Dashboard() {
 
   useFocusEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      return true; // This prevents the default back action
+      return true; 
     });
 
     return () => backHandler.remove();
@@ -34,26 +34,14 @@ export default function Dashboard() {
     return null;
   }
 
-  const today = new Date();
-  const day = today.toLocaleDateString("en-US", { weekday: "long" });
-  const date = today.toLocaleDateString("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-
   return (
     <View style={styles.container}>
       <Text style={styles.dashboardTitle}>Teacher Dashboard</Text>
-      <Text style={styles.dateText}>
-        {day}, {date}
-      </Text>
-
       <ScrollView contentContainerStyle={styles.cardsContainer}>
         {menuItems.map((item) => (
           <TouchableOpacity key={item.label} style={styles.card} onPress={() => router.push(item.route)}>
             <View style={styles.cardBackground}>
-              <Ionicons name={item.icon} size={40} color="black" />
+              <MaterialCommunityIcons name={item.icon} size={40} color={item.color} />
               <Text style={styles.cardText}>{item.label}</Text>
             </View>
           </TouchableOpacity>
@@ -64,17 +52,14 @@ export default function Dashboard() {
 }
 
 const menuItems = [
-  { label: "Courses", icon: "book-outline", route: "/courses" },
-  { label: "Assignments", icon: "create-outline", route: "/assignments" },
-  { label: "Classes", icon: "school-outline", route: "/class" },
-  { label: "Requests", icon: "people-outline", route: "/Requests" },
-  { label: "To-do", icon: "calendar-outline", route: "/to-do" },
-  { label: "Discussions", icon: "chatbubbles-outline", route: "/(chat)/chatHome" },
-  { label: "Attendance", icon: "checkmark-circle-outline", route: "/attendance" },
-  { label: "Exams", icon: "clipboard-outline", route: "/exams" },
-  { label: "Resources", icon: "document-text-outline", route: "/resources" },
-  { label: "@testing-page", icon: "document-text-outline", route: "/teacherProfile" },
-
+  { label: "Courses", icon: "bookshelf", route: "/courses", color: "#4361EE" },
+  { label: "Assignments", icon: "file-document-outline", route: "/assignments", color: "#3DAD5B" },
+  { label: "Classes", icon: "school", route: "/class", color: "#FF6B6B" },
+  { label: "Requests", icon: "email-outline", route: "/Requests", color: "#FFC857" },
+  { label: "Discussions", icon: "message-text-outline", route: "/(chat)/chatHome", color: "#845EC2" },
+  { label: "Attendance", icon: "calendar-check", route: "/attendance", color: "#00C2A8" },
+  { label: "Exams", icon: "clipboard-text-outline", route: "/exams/exams", color: "#FF6B6B" },
+  { label: "Profile", icon: "account-circle", route: "/teacherProfile", color: "#4D8076" },
 ];
 
 const styles = StyleSheet.create({
@@ -114,13 +99,6 @@ const styles = StyleSheet.create({
     color: "#1a1a1a",
     textAlign: "center",
     marginBottom: 8,
-  },
-  dateText: {
-    fontSize: 16,
-    fontFamily: "Poppins_500Medium",
-    color: "#666",
-    textAlign: "center",
-    marginBottom: 25,
   },
   cardText: {
     marginTop: 12,

@@ -1,14 +1,17 @@
-import { useRouter } from "expo-router";
-import { View, Text, TouchableOpacity, Animated, Dimensions, StyleSheet, ScrollView } from "react-native";
+import React from "react";
+import { useRouter, useNavigation } from "expo-router";
+import { View, Text, TouchableOpacity, Animated, Dimensions, StyleSheet, ScrollView, BackHandler } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useState, useRef, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from '@react-navigation/native';
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function Dashboard() {
   const router = useRouter();
+  const navigation = useNavigation();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(-SCREEN_WIDTH * 0.7)).current;
   const today = new Date();
@@ -24,7 +27,33 @@ export default function Dashboard() {
       }
     };
     getUsername();
-  }, []);
+
+    navigation.setOptions({
+      headerLeft: () => null,
+      gestureEnabled: false,
+      headerBackVisible: false
+    });
+
+    const onBackPress = () => {
+      return true; // Prevent back navigation
+    };
+
+    BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+    return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+  }, [navigation]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        return true;
+      };
+
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [])
+  );
 
   const toggleDrawer = () => {
     setIsDrawerOpen(!isDrawerOpen);
@@ -73,9 +102,9 @@ export default function Dashboard() {
                 <Text style={styles.gridText}>Classes</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity disabled={false} style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./calendar")}>
-                <Ionicons name="calendar-outline" size={40} color="#2d3748" />
-                <Text style={styles.gridText}>Calendar</Text>
+              <TouchableOpacity disabled={true} style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./resources")}>
+                <Ionicons name="download-outline" size={40} color="#2d3748" />
+                <Text style={styles.gridText}>Resources</Text>
               </TouchableOpacity>
             </View>
 
@@ -88,30 +117,23 @@ export default function Dashboard() {
                 <Text style={styles.gridText}>Discussions</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./attendance")}>
+              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./sattendance")}>
                 <Ionicons name="checkbox-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Attendance</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.gridRow}>
-              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./exampleassign")}>
-                <Ionicons name="newspaper-outline" size={40} color="#2d3748" />
-                <Text style={styles.gridText}>assignment</Text>
-              </TouchableOpacity>
+              
 
-              <TouchableOpacity disabled={true} style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./resources")}>
-                <Ionicons name="download-outline" size={40} color="#2d3748" />
-                <Text style={styles.gridText}>Resources</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.gridRow}>
               <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("/(student)/testing")}>
                 <Ionicons name="construct-outline" size={40} color="#2d3748" />
                 <Text style={styles.gridText}>Testing</Text>
               </TouchableOpacity>
+
             </View>
+
+            
           </View>
         </ScrollView>
       </View>
@@ -246,7 +268,6 @@ const styles = StyleSheet.create({
       borderWidth: 1,
       borderColor: "rgba(226, 232, 240, 0.95)",
       transform: [{ scale: 1 }],
-      transition: 'transform 0.2s',
     },
     gridItemHover: {
       shadowColor: "#000",
