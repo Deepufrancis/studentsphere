@@ -99,6 +99,11 @@ const TeacherApprovalScreen = () => {
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>Course Requests</Text>
+        <Text style={styles.subHeaderText}>{requests.length} pending</Text>
+      </View>
+
       <Modal
         animationType="slide"
         transparent={true}
@@ -134,7 +139,7 @@ const TeacherApprovalScreen = () => {
                   <Text style={styles.buttonText}>Approve</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.rejectButton} onPress={() => handleRejection(item._id)}>
-                  <Text style={styles.buttonText}>Reject</Text>
+                  <Text style={styles.rejectButtonText}>Reject</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -146,53 +151,124 @@ const TeacherApprovalScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#f5f5f5" },
-  loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  noRequestsText: { fontSize: 18, textAlign: "center", marginTop: 20 },
+  container: { 
+    flex: 1, 
+    backgroundColor: "#FFFFFF" 
+  },
+  header: {
+    backgroundColor: "#FFFFFF", 
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
+    
+  },
+  headerText: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: '#000', 
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  subHeaderText: {
+    fontSize: 15,
+    color: '#666', // updated color for better legibility
+    marginTop: 4,
+  },
+  loaderContainer: { 
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center" 
+  },
+  noRequestsText: { 
+    fontSize: 18, 
+    textAlign: "center", 
+    marginTop: 20,
+    color: '#aaa' 
+  },
   requestCard: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 10,
+    backgroundColor: "#F9F9F9", // light background for cards
+    padding: 20,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
     shadowColor: "#000",
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  courseText: { fontSize: 18, fontWeight: "bold", color: "#333" },
-  usernameText: { fontSize: 14, color: "#666", marginTop: 4 },
-  buttonContainer: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
-  approveButton: { backgroundColor: "#008000", padding: 10, borderRadius: 8, flex: 1, marginRight: 5 },
-  rejectButton: { backgroundColor: "#FF0000", padding: 10, borderRadius: 8, flex: 1, marginLeft: 5 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "bold", textAlign: "center" },
+  courseText: { 
+    fontSize: 20, 
+    fontWeight: "600", 
+    color: "#000", // updated text color for contrast
+    letterSpacing: 1,
+  },
+  usernameText: { 
+    fontSize: 15, 
+    color: "#666", // updated text color
+    marginTop: 4 
+  },
+  buttonContainer: { 
+    flexDirection: "row", 
+    justifyContent: "flex-end", 
+    marginTop: 20,
+    gap: 12
+  },
+  approveButton: { 
+    backgroundColor: "#00E676", 
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    minWidth: 100,
+  },
+  rejectButton: { 
+    backgroundColor: "#FF1744", 
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    minWidth: 100,
+  },
+  buttonText: { 
+    color: "#121212", 
+    fontSize: 15, 
+    fontWeight: "500", 
+    textAlign: "center" 
+  },
+  rejectButtonText: {
+    color: "#121212",
+    fontSize: 15,
+    fontWeight: "500",
+    textAlign: "center"
+  },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   modalContent: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
+    backgroundColor: '#FFFFFF', // updated modal background to white
+    padding: 24,
+    borderRadius: 16,
     alignItems: 'center',
-    width: '80%',
+    width: '85%',
   },
   modalText: {
     fontSize: 16,
-    marginBottom: 20,
+    marginBottom: 24,
     textAlign: 'center',
+    color: '#000', // updated text color for contrast
   },
   modalButton: {
-    backgroundColor: '#007AFF',
-    padding: 10,
-    borderRadius: 5,
-    width: '50%',
+    backgroundColor: "#00E676",
+    padding: 16,
+    borderRadius: 25,
+    width: '100%',
   },
   modalButtonText: {
-    color: 'white',
+    color: '#121212',
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '500',
   },
 });
 
