@@ -10,8 +10,10 @@ interface Course {
 }
 
 interface Student {
-  _id: string;
+  studentId: string;
   username: string;
+  email: string;
+  name: string;
 }
 
 export default function CourseDetails() {
@@ -160,11 +162,12 @@ export default function CourseDetails() {
             {students.length > 0 ? (
               <FlatList
                 data={students}
-                keyExtractor={(item) => item._id}
+                keyExtractor={(item) => item.studentId}
                 renderItem={({ item }) => (
-                  <Text style={{ fontSize: 16, paddingVertical: 5 }}>{item.username}</Text>
-                  
-                  
+                  <View style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold' }}>{item.name}</Text>
+                    <Text style={{ fontSize: 14, color: '#666' }}>Username: {item.username}</Text>
+                  </View>
                 )}
               />
             ) : (

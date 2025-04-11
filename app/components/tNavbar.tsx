@@ -43,6 +43,7 @@ export default function StudentNavbar() {
   const [selectedDateAssignments, setSelectedDateAssignments] = useState<Assignment[]>([]);
   const [showAssignmentsModal, setShowAssignmentsModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const today = new Date();
   const day = today.toLocaleDateString("en-US", { weekday: "long" });
@@ -236,6 +237,21 @@ export default function StudentNavbar() {
     return markedDates;
   };
 
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+  
+  const confirmLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('loggedInUser');
+      await AsyncStorage.removeItem('userRole');
+      setShowLogoutModal(false);
+      router.replace("/");
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.navbar}>
@@ -320,7 +336,7 @@ export default function StudentNavbar() {
           <Text style={[styles.drawerText, pathname === "/help" && styles.activeDrawerText]}>Help</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={() => router.replace("/")}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={24} color="white" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
@@ -579,6 +595,43 @@ export default function StudentNavbar() {
             </View>
           </TouchableOpacity>
         </Modal>
+
+        {/* Logout Confirmation Modal */}
+        <Modal
+          transparent={true}
+          visible={showLogoutModal}
+          animationType="fade"
+          onRequestClose={() => setShowLogoutModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.logoutConfirmModal}>
+              <View style={styles.logoutModalHeader}>
+                <Ionicons name="alert-circle-outline" size={28} color="#FF3B30" />
+                <Text style={styles.logoutModalTitle}>Confirm Logout</Text>
+              </View>
+              
+              <Text style={styles.logoutModalMessage}>
+                Are you sure you want to log out?
+              </Text>
+              
+              <View style={styles.logoutModalButtons}>
+                <TouchableOpacity 
+                  style={[styles.logoutModalButton, styles.cancelLogoutButton]} 
+                  onPress={() => setShowLogoutModal(false)}
+                >
+                  <Text style={styles.cancelLogoutText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.logoutModalButton, styles.confirmLogoutButton]} 
+                  onPress={confirmLogout}
+                >
+                  <Text style={styles.confirmLogoutText}>Log Out</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </Animated.View>
     </View>
   );
@@ -623,7 +676,7 @@ const styles = StyleSheet.create({
   drawer: {
     position: "absolute",
     top: 0,
-    left: 0,  // Change this line
+    left: 0,  // Change this lineg
     width: DRAWER_WIDTH,
     height: screenHeight,
     backgroundColor: "#FFFFFF",
@@ -1079,5 +1132,68 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4a5568',
     lineHeight: 20,
+  },
+  logoutConfirmModal: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    maxWidth: 340,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  logoutModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 10,
+  },
+  logoutModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a202c',
+  },
+  logoutModalMessage: {
+    fontSize: 16,
+    color: '#4a5568',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  logoutModalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  logoutModalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelLogoutButton: {
+    backgroundColor: '#f7fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  confirmLogoutButton: {
+    backgroundColor: '#FF3B30',
+  },
+  cancelLogoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4a5568',
+  },
+  confirmLogoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
 });

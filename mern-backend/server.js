@@ -20,7 +20,6 @@ const assignmentRoutes = require("./routes/assignmentRoutes");
 const studentRoutes = require("./routes/student_routes/s_courseRoutes");
 const registrationRoutes=require("./routes/registrationRoutes");
 const reg_students=require("./routes/student_routes/reg_students");
-const uploadRoutes = require("./routes/uploadRoutes");
 const notificationRoutes=require("./routes/notificationRoutes");
 const attendanceRoutes=require("./routes/attendanceRoutes");
 const userRoutes = require("./routes/userRoutes"); 
@@ -30,8 +29,8 @@ const otpRoutes = require("./routes/otpRoutes");
 const liveClassRoutes=require("./routes/liveclass");
 const examRoutes=require("./routes/examRoutes");
 const chatRoutes = require('./routes/chatRoutes');
-
-
+const uploadRoutes=require('./routes/uploadRoutes');
+const upAssignmentRoutes=require('./routes/upAssignmentRoutes');
 
 
 
@@ -63,8 +62,6 @@ app.use("/api/assignments", assignmentRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/registrations",registrationRoutes);
 app.use("/api/reg_students",reg_students);
-app.use("/api/uploads", uploadRoutes);
-app.use('/api/uploads/assignments', uploadRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/attendance",attendanceRoutes);
 app.use("/api/users", userRoutes);
@@ -73,11 +70,10 @@ app.use("/api/resources", resourceRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/liveclass",liveClassRoutes);
 app.use("/api/exams",examRoutes);
-
 app.use('/api/chat', chatRoutes);
-
-
-
+app.use('/api/testupload',uploadRoutes);
+// Change this line to match the endpoint used in frontend
+app.use('/api/uploads', upAssignmentRoutes);  // Changed from '/api/upassignment' to '/api/uploads'
 
 app.get("/", (req, res) => {
   res.send("Server is working!");

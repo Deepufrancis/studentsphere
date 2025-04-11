@@ -13,7 +13,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_BASE_URL } from "../constants";
 import { Linking } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // Make sure to install expo/vector-icons
+import { Ionicons } from '@expo/vector-icons';
 
 const LiveClassLinksScreen = () => {
   interface LiveClass {
@@ -34,7 +34,7 @@ const LiveClassLinksScreen = () => {
   }
 
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
-  const [username, setUsername] = useState("");
+  const [user, setUser] = useState("");
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,29 +43,29 @@ const LiveClassLinksScreen = () => {
   const [filterCourse, setFilterCourse] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch username
-  useEffect(() => {
-    const fetchUsername = async () => {
-      try {
-        const storedUsername = await AsyncStorage.getItem('loggedInUser');
-        if (storedUsername) setUsername(storedUsername);
-      } catch (error) {
-        console.error('Error fetching username:', error);
+  const fetchLiveClasses = async (studentUsername: string) => {
+    try {
+      // Fix the endpoint to match the backend route structure
+      const response = await axios.get(`${API_BASE_URL}/registration/student/${studentUsername}`);
+      
+      if (!response.data || !response.data.approvedCourses) {
+        console.log("API response format:", response.data);
+        setError("No approved courses found or invalid response format");
+        setLoading(false);
+        return;
       }
-    };
-    fetchUsername();
-  }, []);
-
-  // Fetch student's registered courses
-  useEffect(() => {
-    const fetchCourses = async () => {
-      if (!username) return;
+      
+      const approvedCourses = response.data.approvedCourses || [];
+      setCourses(approvedCourses);
+      
+      if (approvedCourses.length === 0) {
+        setLiveClasses([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Fetch live classes for approved courses
       try {
-        const response = await axios.get(`${API_BASE_URL}/registrations/student/${username}`);
-        const approvedCourses = response.data.approvedCourses || [];
-        setCourses(approvedCourses);
-        
-        // Fetch live classes for approved courses
         const liveClassPromises = approvedCourses.map(course =>
           axios.get(`${API_BASE_URL}/liveclass/course/${course._id}`)
         );
@@ -73,25 +73,51 @@ const LiveClassLinksScreen = () => {
         const liveClassResponses = await Promise.all(liveClassPromises);
         const allLiveClasses = liveClassResponses.flatMap(response => response.data);
         setLiveClasses(allLiveClasses);
+      } catch (liveClassError) {
+        console.error('Error fetching live class data:', liveClassError);
+        setError("Failed to fetch live class information.");
+      }
+    } catch (err) {
+      console.error('Error fetching courses:', err);
+      setError("Failed to fetch your registered courses. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('loggedInUser');
+        console.log('Fetched user data:', userData);
+        if (userData) {
+          // Store the string directly without parsing
+          setUser(userData);
+          fetchLiveClasses(userData);
+        }
       } catch (error) {
-        console.error('Error fetching courses:', error);
-        setError("Failed to fetch courses and live classes.");
-      } finally {
-        setLoading(false);
+        console.error('Error fetching user data:', error);
+        setError("Failed to retrieve user information.");
       }
     };
-    fetchCourses();
-  }, [username]);
+    fetchUser();
+  }, []);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     const refresh = async () => {
-      const username = await AsyncStorage.getItem("loggedInUser");
-      if (username) {
-        await fetchLiveClasses(username);
-        await fetchCourses(username);
+      try {
+        const userData = await AsyncStorage.getItem("loggedInUser");
+        if (userData) {
+          await fetchLiveClasses(userData);
+        }
+      } catch (error) {
+        console.error('Error refreshing data:', error);
+        setError("Failed to refresh data.");
+      } finally {
+        setRefreshing(false);
       }
-      setRefreshing(false);
     };
     refresh();
   }, []);

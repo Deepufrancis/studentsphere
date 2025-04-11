@@ -44,6 +44,7 @@ export default function StudentNavbar() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [selectedDateAssignments, setSelectedDateAssignments] = useState<Assignment[]>([]);
   const [showAssignmentsModal, setShowAssignmentsModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const day = today.toLocaleDateString("en-US", { weekday: "long" });
   const date = today.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
@@ -239,20 +240,39 @@ export default function StudentNavbar() {
     return markedDates;
   };
 
+  const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+  
+  const confirmLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('loggedInUser');
+      await AsyncStorage.removeItem('userRole');
+      setShowLogoutModal(false);
+      router.replace("/");
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.navbar}>
-        <TouchableOpacity onPress={toggleDrawer}>
-          <Ionicons name="menu" size={30} color="black" />
+        <TouchableOpacity 
+          style={styles.menuButton} 
+          onPress={toggleDrawer}
+        >
+          <Ionicons name="menu" size={24} color="#2d3748" />
         </TouchableOpacity>
 
         <View style={styles.navIcons}>
-          
           <TouchableOpacity 
             style={styles.datePill}
             onPress={() => setShowCalendar(true)}
           >
-            <Ionicons name="calendar-outline" size={20} color="#4a5568" style={styles.calendarIcon} />
+            <View style={styles.calendarIconContainer}>
+              <Ionicons name="calendar-outline" size={18} color="#fff" />
+            </View>
             <View>
               <Text style={styles.dayText}>{selectedDate.toLocaleDateString("en-US", { weekday: "long" })}</Text>
               <Text style={styles.dateText}>
@@ -262,7 +282,7 @@ export default function StudentNavbar() {
           </TouchableOpacity>
         </View>
       </View>
-
+      
       <TouchableOpacity 
         style={[
           styles.overlay,
@@ -280,19 +300,25 @@ export default function StudentNavbar() {
         ]}
       >
         <View style={styles.drawerHeader}>
-          <TouchableOpacity 
-            style={styles.avatarIcon}
-            onPress={() => profilePicture && setShowProfilePicModal(true)}
-          >
-            {profilePicture ? (
-              <Image source={{ uri: profilePicture }} style={styles.profileImage} />
-            ) : (
-              <Ionicons name="person" size={40} color="#007AFF" />
-            )}
-          </TouchableOpacity>
-          <Text style={styles.userName}>{username || 'User'}</Text>
-          <View style={[styles.roleTag, styles.studentRoleTag]}>
-            <Text style={[styles.roleTagText, styles.studentRoleText]}>Student</Text>
+          <View style={styles.profileContainer}>
+            <TouchableOpacity 
+              style={styles.avatarIcon}
+              onPress={() => profilePicture && setShowProfilePicModal(true)}
+            >
+              {profilePicture ? (
+                <Image source={{ uri: profilePicture }} style={styles.profileImage} />
+              ) : (
+                <View style={styles.profileImagePlaceholder}>
+                  <Ionicons name="person" size={36} color="#007AFF" />
+                </View>
+              )}
+            </TouchableOpacity>
+            <View style={styles.userInfoContainer}>
+              <Text style={styles.userName}>{username || 'User'}</Text>
+              <View style={[styles.roleTag, styles.studentRoleTag]}>
+                <Text style={[styles.roleTagText, styles.studentRoleText]}>Student</Text>
+              </View>
+            </View>
           </View>
           <Text style={styles.userEmail}>{emailAddress}</Text>
         </View>
@@ -323,7 +349,7 @@ export default function StudentNavbar() {
           <Text style={[styles.drawerText, pathname === "/help" && styles.activeDrawerText]}>Help</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={() => router.replace("/")}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={24} color="white" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
@@ -501,6 +527,43 @@ export default function StudentNavbar() {
             />
           </TouchableOpacity>
         </Modal>
+
+        {/* Logout Confirmation Modal */}
+        <Modal
+          transparent={true}
+          visible={showLogoutModal}
+          animationType="fade"
+          onRequestClose={() => setShowLogoutModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.logoutConfirmModal}>
+              <View style={styles.logoutModalHeader}>
+                <Ionicons name="alert-circle-outline" size={28} color="#FF3B30" />
+                <Text style={styles.logoutModalTitle}>Confirm Logout</Text>
+              </View>
+              
+              <Text style={styles.logoutModalMessage}>
+                Are you sure you want to log out?
+              </Text>
+              
+              <View style={styles.logoutModalButtons}>
+                <TouchableOpacity 
+                  style={[styles.logoutModalButton, styles.cancelLogoutButton]} 
+                  onPress={() => setShowLogoutModal(false)}
+                >
+                  <Text style={styles.cancelLogoutText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.logoutModalButton, styles.confirmLogoutButton]} 
+                  onPress={confirmLogout}
+                >
+                  <Text style={styles.confirmLogoutText}>Log Out</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </Animated.View>
 
       <Modal
@@ -593,24 +656,79 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   navbar: {
-    height: 60,
+    height: 70,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 15,
-    backgroundColor: "#FFF",
-    borderRadius: 15,
-    marginHorizontal: 10,
-    marginTop: 10,
-    shadowColor: "#000",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    marginHorizontal: 16,
+    marginTop: 15,
+    marginBottom: 10,
+    shadowColor: "#1a365d",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: "rgba(226, 232, 240, 0.6)",
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#f8fafc",
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   navIcons: {
     flexDirection: "row",
-    gap: 20,
+    gap: 15,
+  },
+  datePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+    shadowColor: "#64748b",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  calendarIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#007AFF",
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  dayText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1a202c",
+    marginBottom: 2,
+  },
+  dateText: {
+    fontSize: 12,
+    color: "#718096",
   },
   overlay: {
     position: "absolute",
@@ -626,71 +744,117 @@ const styles = StyleSheet.create({
   drawer: {
     position: "absolute",
     top: 0,
-    left: 0,  // Change this line
+    left: 0,
     width: DRAWER_WIDTH,
     height: screenHeight,
     backgroundColor: "#FFFFFF",
     padding: 0,
     zIndex: 30,
-    borderTopRightRadius: 25,
-    borderBottomRightRadius: 25,
+    borderTopRightRadius: 30,
+    borderBottomRightRadius: 30,
     shadowColor: "#000",
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 6, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
+    elevation: 15,
   },
   closeButton: {
     alignSelf: "flex-end",
     marginBottom: 20,
   },
-  drawerHeader: {
-    padding: 20,
+  profileContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 20,
+    marginBottom: 15,
+  },
+  userInfoContainer: {
+    marginLeft: 15,
+  },
+  drawerHeader: {
+    padding: 25,
+    paddingTop: 40,
+    backgroundColor: "#f0f6ff", // Lighter blue background
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(207, 226, 255, 0.9)", // Lighter blue border
+    shadowColor: "#64748b",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
   },
   avatarIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70,
+    height: 70,
+    borderRadius: 22,
     backgroundColor: '#E8F0FE',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  profileImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 22,
+  },
+  profileImagePlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E8F0FE',
   },
   userName: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: '#1a202c',
+    marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    color: '#718096',
+    marginTop: 10,
+    paddingLeft: 2,
   },
   drawerDivider: {
     height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 10,
-    marginHorizontal: 20,
+    backgroundColor: 'rgba(226, 232, 240, 0.8)',
+    marginVertical: 15,
+    marginHorizontal: 25,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
   },
   drawerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    marginHorizontal: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 25,
+    marginHorizontal: 15,
     marginVertical: 5,
-    borderRadius: 12,
+    borderRadius: 16,
     backgroundColor: 'transparent',
+    transition: 'all 0.3s ease',
   },
   activeDrawerItem: {
     backgroundColor: '#007AFF',
-    borderLeftWidth: 4,
-    borderLeftColor: '#005AC1',
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   drawerText: {
-    color: '#333',
+    color: '#4a5568',
     fontSize: 16,
     marginLeft: 15,
     fontWeight: '500',
@@ -699,16 +863,38 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
   },
+  roleTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  studentRoleTag: {
+    backgroundColor: 'rgba(0, 122, 255, 0.15)',
+  },
+  roleTagText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  studentRoleText: {
+    color: '#007AFF',
+  },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FF3B30',
+    backgroundColor: 'rgba(255, 59, 48, 0.9)',
     paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginHorizontal: 10,
+    paddingHorizontal: 25,
+    borderRadius: 16,
+    marginHorizontal: 15,
     marginTop: 'auto',
-    marginBottom: 80, // Increased from 40 to 80 for better Android visibility
+    marginBottom: 50,
+    shadowColor: "#FF3B30",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
   },
   logoutText: {
     color: 'white',
@@ -716,57 +902,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 15,
   },
-  roleTag: {
-    backgroundColor: '#E8F0FE',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  studentRoleTag: {
-    backgroundColor: '#E8F0FE',
-  },
-  roleTagText: {
-    color: '#007AFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  studentRoleText: {
-    color: '#007AFF',
-  },
-  datePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 25,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderWidth: 1,
-    borderColor: "rgba(226, 232, 240, 0.9)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+  
   calendarIcon: {
     marginRight: 8,
   },
-  dayText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#2d3748",
-  },
-  dateText: {
-    fontSize: 12,
-    color: "#4a5568",
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
+
   emailEditContainer: {
     width: '100%',
     paddingHorizontal: 10,
@@ -865,14 +1005,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
   },
-  profileImagePlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#e1e1e1',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+
   editSection: {
     width: '100%',
     marginBottom: 15,
@@ -964,21 +1097,21 @@ const styles = StyleSheet.create({
   toastContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
+    paddingVertical: 14,
+    borderRadius: 20,
     gap: 10,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
     borderWidth: 1,
-    borderColor: '#4CAF50',
+    borderColor: 'rgba(76, 175, 80, 0.3)',
   },
   toastText: {
     fontSize: 16,
@@ -987,18 +1120,20 @@ const styles = StyleSheet.create({
   },
   calendarModal: {
     backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 10,
+    borderRadius: 24,
+    padding: 20,
     width: '90%',
     maxWidth: 400,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 6,
     },
     shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowRadius: 12,
+    elevation: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.7)',
   },
   assignmentsModal: {
     backgroundColor: 'white',
@@ -1035,9 +1170,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1a202c',
   },
-  closeButton: {
-    padding: 5,
-  },
+  
   assignmentItem: {
     flexDirection: 'row',
     paddingVertical: 12,
@@ -1085,5 +1218,68 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4a5568',
     lineHeight: 20,
+  },
+  logoutConfirmModal: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    width: '85%',
+    maxWidth: 340,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  logoutModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 10,
+  },
+  logoutModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a202c',
+  },
+  logoutModalMessage: {
+    fontSize: 16,
+    color: '#4a5568',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  logoutModalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  logoutModalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelLogoutButton: {
+    backgroundColor: '#f7fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  confirmLogoutButton: {
+    backgroundColor: '#FF3B30',
+  },
+  cancelLogoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4a5568',
+  },
+  confirmLogoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
 });

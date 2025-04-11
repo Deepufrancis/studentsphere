@@ -1,11 +1,11 @@
 import React from "react";
 import { useRouter, useNavigation } from "expo-router";
-import { View, Text, TouchableOpacity, Animated, Dimensions, StyleSheet, ScrollView, BackHandler } from "react-native";
+import { View, Text, TouchableOpacity, Animated, Dimensions, StyleSheet, ScrollView, BackHandler, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useState, useRef, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import useUserData from "../hooks/getUserName";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -14,20 +14,9 @@ export default function Dashboard() {
   const navigation = useNavigation();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(-SCREEN_WIDTH * 0.7)).current;
-  const today = new Date();
-  const day = today.toLocaleDateString("en-US", { weekday: "long" }); // Example: Monday
-  const date = today.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
-  const [username, setUsername] = useState("");
+  const { username } = useUserData();
 
   useEffect(() => {
-    const getUsername = async () => {
-      const storedUsername = await AsyncStorage.getItem("loggedInUser");
-      if (storedUsername) {
-        setUsername(storedUsername);
-      }
-    };
-    getUsername();
-
     navigation.setOptions({
       headerLeft: () => null,
       gestureEnabled: false,
@@ -66,12 +55,16 @@ export default function Dashboard() {
 
   return (
     <LinearGradient
-      colors={['#ffffff', '#f8fafc']}
+      colors={['#f0f5ff', '#e6f0ff']}
       style={styles.mainContainer}>
       <View style={styles.cardContainer}>
         <View style={styles.headerContainer}>
-          <Text style={styles.dashboardTitle}>Student Dashboard</Text>
+          <Text style={styles.dashboardTitle}>Student Dkashboard</Text>
+          {username && (
+            <Text style={styles.welcomeMessage}>Welcome back, {username}!</Text>
+          )}
         </View>
+        
         <View style={styles.divider} />
         
         {/* Grid Layout */}
@@ -82,58 +75,87 @@ export default function Dashboard() {
           <View style={styles.gridContainer}>
             <View style={styles.gridRow}>
               <TouchableOpacity 
-                style={[styles.gridItem, styles.gridItemHover]} 
+                style={styles.gridItem} 
+                activeOpacity={0.7}
                 onPress={() => router.push("./regcourse")}>
-                <Ionicons name="book-outline" size={40} color="#2d3748" />
+                <View style={styles.iconContainer}>
+                  <Ionicons name="book-outline" size={40} color="#4a6baf" />
+                </View>
                 <Text style={styles.gridText}>Register Courses</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.gridItem, styles.gridItemHover]} 
+                style={styles.gridItem} 
+                activeOpacity={0.7}
                 onPress={() => router.push("./(student_assignment)/AssignmentViewer")}>
-                <Ionicons name="document-text-outline" size={40} color="#2d3748" />
+                <View style={styles.iconContainer}>
+                  <Ionicons name="document-text-outline" size={40} color="#4a6baf" />
+                </View>
                 <Text style={styles.gridText}>Assignments</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.gridRow}>
-              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./sclass")}>
-                <Ionicons name="school-outline" size={40} color="#2d3748" />
+              <TouchableOpacity 
+                style={styles.gridItem} 
+                activeOpacity={0.7}
+                onPress={() => router.push("./sclass")}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="school-outline" size={40} color="#4a6baf" />
+                </View>
                 <Text style={styles.gridText}>Classes</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity disabled={true} style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./resources")}>
-                <Ionicons name="download-outline" size={40} color="#2d3748" />
-                <Text style={styles.gridText}>Resources</Text>
+              <TouchableOpacity 
+                disabled={true} 
+                style={[styles.gridItem, styles.disabledItem]} 
+                activeOpacity={0.9}
+                onPress={() => router.push("./resources")}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="download-outline" size={40} color="#94a3b8" />
+                </View>
+                <Text style={[styles.gridText, styles.disabledText]}>Resources</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.gridRow}>
-              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push({
-                pathname: "/(chat)/chatHome",
-                params: { selectedRole: "student" }
-              })}>
-                <Ionicons name="chatbubbles-outline" size={40} color="#2d3748" />
+              <TouchableOpacity 
+                style={styles.gridItem}
+                activeOpacity={0.7} 
+                onPress={() => router.push({
+                  pathname: "/(chat)/chatHome",
+                  params: { selectedRole: "student" }
+                })}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="chatbubbles-outline" size={40} color="#4a6baf" />
+                </View>
                 <Text style={styles.gridText}>Discussions</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("./sattendance")}>
-                <Ionicons name="checkbox-outline" size={40} color="#2d3748" />
+              <TouchableOpacity 
+                style={styles.gridItem}
+                activeOpacity={0.7} 
+                onPress={() => router.push("./sattendance")}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="checkbox-outline" size={40} color="#4a6baf" />
+                </View>
                 <Text style={styles.gridText}>Attendance</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.gridRow}>
-              
-
-              <TouchableOpacity style={[styles.gridItem, styles.gridItemHover]} onPress={() => router.push("/(student)/testing")}>
-                <Ionicons name="construct-outline" size={40} color="#2d3748" />
+              <TouchableOpacity 
+                style={styles.gridItem}
+                activeOpacity={0.7} 
+                onPress={() => router.push("/(student)/testing")}>
+                <View style={styles.iconContainer}>
+                  <Ionicons name="construct-outline" size={40} color="#4a6baf" />
+                </View>
                 <Text style={styles.gridText}>Testing</Text>
               </TouchableOpacity>
-
+              
+              <View style={styles.emptyGridItem} />
             </View>
-
-            
           </View>
         </ScrollView>
       </View>
@@ -151,93 +173,31 @@ const styles = StyleSheet.create({
       backgroundColor: "#ffffff",
       borderRadius: 20,
       padding: 16,
-      shadowColor: "#000",
+      shadowColor: "#3b5998",
       shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.08,
+      shadowOpacity: 0.1,
       shadowRadius: 15,
       elevation: 10,
     },
-    dateContainer: {
-      padding: 16,
-      backgroundColor: "#f8fafc",
-      borderRadius: 16,
-      marginBottom: 24,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
-      elevation: 3,
-      borderWidth: 1,
-      borderColor: "rgba(226, 232, 240, 0.8)",
-    },
-    dateWrapper: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    calendarIcon: {
-      marginRight: 8,
-    },
-    dayText: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: "#2d3748",
-    },
-    dateText: {
-      fontSize: 12,
-      color: "#4a5568",
-    },
-    welcomeText: {
-      fontSize: 20,
-      color: "#2d3748",
-      marginBottom: 20,
-      textAlign: "center",
+    welcomeMessage: {
+      fontSize: 16,
+      color: "#586993",
+      marginTop: 8,
       fontWeight: "500",
-    },
-    container: {
-      flex: 1,
-      padding: 20,
-      backgroundColor: "#f8f9fa",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-    },
-    navbar: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: 12,
-      paddingHorizontal: 15,
-      backgroundColor: "#ffffff",
-      borderRadius: 10,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.15,
-      shadowRadius: 5,
-      elevation: 5,
-      marginBottom: 15,
-    },
-    navIcons: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    iconSpacing: {
-      marginRight: 15,
     },
     divider: {
       height: 2,
-      backgroundColor: "#f1f5f9",
+      backgroundColor: "#edf2f7",
       marginBottom: 24,
       width: "95%",
       alignSelf: "center",
     },
     dashboardTitle: {
-      fontSize: 26,
+      fontSize: 28,
       fontWeight: "bold",
       textAlign: "left",
-      color: "#1a365d",
-      letterSpacing: 0.7,
+      color: "#3b5998",
+      letterSpacing: 0.5,
     },
     gridContainer: {
       alignItems: "center",
@@ -250,31 +210,63 @@ const styles = StyleSheet.create({
       flexDirection: "row",
       justifyContent: "space-between",
       width: "100%",
-      marginBottom: 15,
+      marginBottom: 20,
     },
     gridItem: {
       width: "47%",
-      height: 130,
+      height: 140,
       backgroundColor: "#ffffff",
       justifyContent: "center",
       alignItems: "center",
-      borderRadius: 12,
+      borderRadius: 16,
       marginHorizontal: "1.5%",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.12,
-      shadowRadius: 6,
-      elevation: 5,
-      borderWidth: 1,
-      borderColor: "rgba(226, 232, 240, 0.95)",
-      transform: [{ scale: 1 }],
-    },
-    gridItemHover: {
-      shadowColor: "#000",
+      shadowColor: "#3b5998",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.15,
       shadowRadius: 8,
-      elevation: 7,
+      elevation: 5,
+      borderWidth: 1,
+      borderColor: "rgba(226, 232, 240, 0.95)",
+      paddingVertical: 15,
+    },
+    iconContainer: {
+      backgroundColor: "rgba(237, 242, 247, 0.8)",
+      width: 70,
+      height: 70,
+      borderRadius: 35,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 12,
+    },
+    disabledItem: {
+      backgroundColor: "#f8fafc",
+      borderColor: "#e2e8f0",
+      shadowOpacity: 0.07,
+    },
+    disabledText: {
+      color: "#94a3b8",
+    },
+    emptyGridItem: {
+      width: "47%",
+      height: 140,
+      marginHorizontal: "1.5%",
+    },
+    gridText: {
+      fontSize: 15,
+      fontWeight: "600",
+      marginTop: 10,
+      color: "#334155",
+      textAlign: "center",
+      letterSpacing: 0.3,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      paddingBottom: 20,
+    },
+    headerContainer: {
+      marginVertical: 16,
+      paddingHorizontal: 10,
+      marginBottom: 20,
     },
     drawer: {
       position: "absolute",
@@ -311,22 +303,5 @@ const styles = StyleSheet.create({
     drawerIcon:{
         marginRight:15
     },
-    gridText: {
-      fontSize: 14,
-      fontWeight: "600",
-      marginTop: 14,
-      color: "#334155",
-      textAlign: "center",
-      letterSpacing: 0.3,
-    },
-    scrollContainer: {
-      flexGrow: 1,
-      paddingBottom: 20,
-    },
-    headerContainer: {
-      marginVertical: 16,
-      paddingHorizontal: 10,
-      marginBottom: 24,
-    },
-  });
+});
 

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet, Modal } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, StyleSheet, Animated, Dimensions } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "../constants";
 
@@ -10,6 +10,8 @@ interface Course {
   description: string;
 }
 
+type FilterOption = "all" | "approved" | "pending" | "not_registered";
+
 const CourseRegistrationScreen = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
@@ -19,6 +21,12 @@ const CourseRegistrationScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentFilter, setCurrentFilter] = useState<FilterOption>("all");
+  const filterAnimation = useRef(new Animated.Value(0)).current;
+  
+  const screenWidth = Dimensions.get('window').width;
+  const segmentWidth = (screenWidth - 40) / 4; // 40 for padding
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -51,6 +59,18 @@ const CourseRegistrationScreen = () => {
     fetchCourses();
   }, []);
 
+  useEffect(() => {
+    if (currentFilter === "all") {
+      setFilteredCourses(courses);
+    } else {
+      const filtered = courses.filter(course => {
+        const status = (registrationStatus[course._id] || "not_registered").trim().toLowerCase();
+        return status === currentFilter;
+      });
+      setFilteredCourses(filtered);
+    }
+  }, [currentFilter, courses, registrationStatus]);
+
   const fetchRegistrationStatus = async (user: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/registrations/status/${user}`);
@@ -65,19 +85,32 @@ const CourseRegistrationScreen = () => {
   const handleRegister = async (courseId: string) => {
     if (!username) return;
     try {
+      setLoading(true);
       const response = await fetch(`${API_BASE_URL}/registrations`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, courseId }),
+        body: JSON.stringify({ 
+          username, 
+          courseId,
+          // Only include required fields
+        }),
       });
 
-      if (!response.ok) throw new Error("Failed to send registration request.");
+      const data = await response.json();
 
-      fetchRegistrationStatus(username);
+      if (!response.ok) {
+        const errorMessage = data.error || data.message || "Failed to send registration request.";
+        throw new Error(errorMessage);
+      }
+
+      await fetchRegistrationStatus(username);
     } catch (error) {
-      console.error("Error registering for course:", error);
+      console.error("Registration error:", error);
+      setErrorMessage(error instanceof Error ? error.message : "Registration failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -94,78 +127,149 @@ const CourseRegistrationScreen = () => {
         { method: "DELETE" }
       );
 
-      if (!response.ok) throw new Error("Failed to cancel registration.");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to cancel registration");
+      }
+      
       fetchRegistrationStatus(username);
     } catch (error) {
       console.error("Error cancelling registration:", error);
+      setErrorMessage(error instanceof Error ? error.message : "An unexpected error occurred");
     } finally {
       setModalVisible(false);
       setSelectedCourse(null);
     }
   };
 
+  const animateFilter = (index: number) => {
+    Animated.spring(filterAnimation, {
+      toValue: index,
+      tension: 300,
+      friction: 30,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleFilterChange = (filter: FilterOption, index: number) => {
+    setCurrentFilter(filter);
+    animateFilter(index);
+  };
+
   if (loading) {
     return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Available Courses</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerText}>Available Courses</Text>
         <TouchableOpacity 
-          style={styles.infoButton}
+          style={styles.infoButtonContainer} 
           onPress={() => setInfoModalVisible(true)}
         >
-          <Text style={styles.infoButtonText}>ⓘ</Text>
+          <Text style={styles.infoButton}>ⓘ</Text>
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filteredCourses}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => {
-          const status = registrationStatus[item._id] || "not_registered";
+      <View style={styles.filterContainer}>
+        <Animated.View 
+          style={[
+            styles.filterIndicator, 
+            { 
+              transform: [{ 
+                translateX: filterAnimation.interpolate({
+                  inputRange: [0, 1, 2, 3],
+                  outputRange: [0, segmentWidth, segmentWidth * 2, segmentWidth * 3]
+                }) 
+              }] 
+            }
+          ]} 
+        />
+        {["all", "approved", "pending", "not_registered"].map((filter, index) => (
+          <TouchableOpacity 
+            key={filter}
+            style={styles.filterOption} 
+            onPress={() => handleFilterChange(filter as FilterOption, index)}
+          >
+            <Text style={[
+              styles.filterText,
+              currentFilter === filter && styles.activeFilterText
+            ]}>
+              {filter.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-          return (
-            <View style={styles.courseCard}>
-              <View style={styles.courseHeader}>
-                <Text style={styles.courseTitle}>{item.courseName}</Text>
-                <Text style={styles.statusBadge(status as 'registered' | 'pending' | 'not_registered')}>
-                  {status.toUpperCase()}
-                </Text>
-              </View>
-              <Text style={styles.courseTeacher}>Teacher: {item.teacher}</Text>
-              <Text style={styles.courseDescription}>{item.description}</Text>
+      {filteredCourses.length === 0 ? (
+        <View style={styles.emptyCourseContainer}>
+          <Text style={styles.emptyCoursesText}>No courses found for this filter</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredCourses}
+          keyExtractor={(item) => item._id}
+          numColumns={2}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => {
+            const rawStatus = registrationStatus[item._id] || "not_registered";
+            const status = rawStatus.trim().toLowerCase();
 
-              <View style={styles.buttonContainer}>
-                {status === "pending" ? (
-                  <TouchableOpacity 
-                    style={styles.cancelButton} 
-                    onPress={() => handleCancel(item._id)}
-                  >
-                    <Text style={styles.buttonText}>Cancel Request</Text>
-                  </TouchableOpacity>
-                ) : status === "registered" ? (
-                  <View style={styles.registeredBadge}>
-                    <Text style={styles.registeredButtonText}>Enrolled</Text>
+            return (
+              <View style={styles.courseItem}>
+                <View style={styles.courseHeader}>
+                  <Text style={styles.courseName} numberOfLines={2}>{item.courseName}</Text>
+                  <View style={[
+                    styles.statusContainer,
+                    status === "approved" && styles.approvedContainer,
+                    status === "pending" && styles.pendingContainer,
+                    status === "not_registered" && styles.notRegisteredContainer
+                  ]}>
+                    <Text style={[
+                      styles.statusText,
+                      status === "approved" && styles.approvedText,
+                      status === "pending" && styles.pendingText,
+                      status === "not_registered" && styles.notRegisteredText
+                    ]}>{status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</Text>
                   </View>
-                ) : (
-                  <TouchableOpacity 
-                    style={styles.registerButton} 
-                    onPress={() => handleRegister(item._id)}
-                  >
-                    <Text style={styles.buttonText}>Request Enrollment</Text>
-                  </TouchableOpacity>
-                )}
+                </View>
+                <Text style={styles.teacherName} numberOfLines={1}>Teacher: {item.teacher}</Text>
+                <Text style={styles.description} numberOfLines={3}>{item.description}</Text>
+
+                <View style={styles.buttonContainer}>
+                  {status === "pending" ? (
+                    <TouchableOpacity 
+                      style={styles.cancelButton} 
+                      onPress={() => handleCancel(item._id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  ) : status === "approved" ? (
+                    <View style={styles.enrolledContainer}>
+                      <Text style={styles.enrolledText}>✓ Enrolled</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.enrollButton} 
+                      onPress={() => handleRegister(item._id)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.enrollButtonText}>Enroll Now</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-            </View>
-          );
-        }}
-      />
+            );
+          }}
+        />
+      )}
 
       <Modal
         animationType="fade"
@@ -174,7 +278,7 @@ const CourseRegistrationScreen = () => {
         onRequestClose={() => setInfoModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Course Registration</Text>
             <Text style={styles.modalText}>
               Welcome to the course registration page! Here you can:
@@ -183,9 +287,10 @@ const CourseRegistrationScreen = () => {
               {'\n'}• View your registration status
               {'\n'}• Cancel pending registration requests
             </Text>
-            <TouchableOpacity
-              style={[styles.modalButton, { width: '100%', backgroundColor: '#2ecc71' }]}
+            <TouchableOpacity 
+              style={styles.modalButton} 
               onPress={() => setInfoModalVisible(false)}
+              activeOpacity={0.7}
             >
               <Text style={styles.modalButtonText}>Got it!</Text>
             </TouchableOpacity>
@@ -200,25 +305,46 @@ const CourseRegistrationScreen = () => {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Cancel Registration</Text>
-            <Text style={styles.modalText}>
-              Are you sure you want to cancel your registration request?
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton]}
+            <Text style={styles.modalText}>Are you sure you want to cancel your registration request?</Text>
+            <View style={styles.modalButtonsContainer}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.modalButtonSecondary]} 
                 onPress={() => setModalVisible(false)}
+                activeOpacity={0.7}
               >
-                <Text style={styles.modalButtonText}>No, Keep It</Text>
+                <Text style={styles.modalButtonSecondaryText}>No, Keep It</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalConfirmButton]}
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.modalButtonDanger]} 
                 onPress={confirmCancel}
+                activeOpacity={0.7}
               >
                 <Text style={styles.modalButtonText}>Yes, Cancel</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={!!errorMessage}
+        onRequestClose={() => setErrorMessage(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Error</Text>
+            <Text style={styles.modalText}>{errorMessage}</Text>
+            <TouchableOpacity 
+              style={styles.modalButton} 
+              onPress={() => setErrorMessage(null)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -229,181 +355,300 @@ const CourseRegistrationScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: "#f5f5f5",
+    padding: 20,
+    backgroundColor: '#f8f9fa',
   },
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
-    marginBottom: 20,
-    position: 'relative',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-    textAlign: "center",
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  headerText: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+  },
+  infoButtonContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#e9ecef',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
   },
   infoButton: {
-    position: 'absolute',
-    right: 0,
-    padding: 8,
-  },
-  infoButtonText: {
-    fontSize: 24,
-    color: '#3498db',
+    fontSize: 20,
+    color: '#4285F4',
     fontWeight: 'bold',
   },
-  courseCard: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 15,
-    shadowColor: "#000",
+  filterContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#e9ecef',
+    borderRadius: 10,
+    marginBottom: 20,
+    position: 'relative',
+    height: 48,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  filterIndicator: {
+    position: 'absolute',
+    width: '25%',
+    height: '90%',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    top: '5%',
+    left: '0.5%',
+    elevation: 4,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  filterOption: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  filterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6c757d',
+    textAlign: 'center',
+  },
+  activeFilterText: {
+    color: '#4285F4',
+    fontWeight: 'bold',
+  },
+  emptyCourseContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyCoursesText: {
+    fontSize: 18,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  listContent: {
+    paddingBottom: 20,
+  },
+  courseItem: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    width: '48%',
+    marginHorizontal: '1%',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
   },
   courseHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  courseTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#2c3e50",
-    flex: 1,
-  },
-  statusBadge: (status: 'registered' | 'pending' | 'not_registered') => ({
-    fontSize: 12,
-    fontWeight: "bold",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    overflow: "hidden",
-    backgroundColor: status === "registered" ? "#e6f7ee" : 
-                    status === "pending" ? "#fff8e6" : "#f5f5f5",
-    color: status === "registered" ? "#27ae60" : 
-           status === "pending" ? "#f39c12" : "#7f8c8d",
-  }),
-  courseTeacher: {
-    fontSize: 15,
-    color: "#7f8c8d",
-    marginBottom: 8,
-  },
-  courseDescription: {
-    fontSize: 14,
-    color: "#34495e",
-    lineHeight: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 12,
   },
-  buttonContainer: {
-    marginTop: 15,
-    alignItems: "center",
+  courseName: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    flex: 1,
+    marginRight: 8,
+    color: '#2c3e50',
   },
-  registerButton: {
-    backgroundColor: "#2ecc71",
-    padding: 14,
+  statusContainer: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    marginTop: 2,
+  },
+  approvedContainer: {
+    backgroundColor: '#4CAF50',
+  },
+  pendingContainer: {
+    backgroundColor: '#FFC107',
+  },
+  notRegisteredContainer: {
+    backgroundColor: '#F44336',
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  approvedText: {
+    color: 'white',
+  },
+  pendingText: {
+    color: '#212529',
+  },
+  notRegisteredText: {
+    color: 'white',
+  },
+  teacherName: {
+    fontSize: 14,
+    color: '#6c757d',
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 14,
+    color: '#495057',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  buttonContainer: {
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  enrollButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 10,
-    alignItems: "center",
-    width: "100%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    width: '100%',
+    alignItems: 'center',
     elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  enrollButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 15,
+    letterSpacing: 0.5,
   },
   cancelButton: {
-    backgroundColor: "#e74c3c",
-    padding: 14,
+    backgroundColor: '#f44336',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 10,
-    alignItems: "center",
-    width: "100%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    width: '100%',
+    alignItems: 'center',
     elevation: 3,
+    shadowColor: '#d32f2f',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
-  registeredBadge: {
-    backgroundColor: "#27ae60",
-    padding: 14,
+  cancelButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 15,
+    letterSpacing: 0.5,
+  },
+  enrolledContainer: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 10,
-    alignItems: "center",
-    width: "100%",
-    shadowColor: "#000",
+    width: '100%',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#1976D2',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  registeredButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-    textAlign: "center",
+  enrolledText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 15,
+    letterSpacing: 0.5,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 25,
-    width: "85%",
-    alignItems: "center",
+  modalContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 24,
+    width: '85%',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 15,
-    color: "#2c3e50",
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#2c3e50',
   },
   modalText: {
     fontSize: 16,
-    color: "#34495e",
-    textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 24,
+    lineHeight: 22,
+    color: '#495057',
   },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
+  modalButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
   },
   modalButton: {
-    padding: 12,
+    backgroundColor: '#4285F4',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 10,
-    width: "48%",
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    minWidth: '45%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  modalCancelButton: {
-    backgroundColor: "#95a5a6",
+  modalButtonSecondary: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#4285F4',
   },
-  modalConfirmButton: {
-    backgroundColor: "#e74c3c",
+  modalButtonDanger: {
+    backgroundColor: '#f44336',
+    shadowColor: '#d32f2f',
   },
   modalButtonText: {
-    color: "#fff",
-    textAlign: "center",
+    color: 'white',
+    fontWeight: 'bold',
     fontSize: 16,
-    fontWeight: "600",
+    letterSpacing: 0.5,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  modalButtonSecondaryText: {
+    color: '#4285F4',
+    fontWeight: 'bold',
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
 });
 

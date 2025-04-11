@@ -10,11 +10,19 @@ import {
   Alert,
   ScrollView,
   Linking,
+  RefreshControl,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Modal,
+  Dimensions,
+  StatusBar,
 } from "react-native";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "../../constants";
 import * as DocumentPicker from "expo-document-picker";
+import { Ionicons } from '@expo/vector-icons';
 
 interface Comment {
   _id: string;
@@ -31,6 +39,9 @@ interface Assignment {
     submittedAt: string;
     fileName: string;
     fileUrl: string;
+    grade?: number;
+    feedback?: string;
+    status?: string;
   };
 }
 
@@ -53,6 +64,8 @@ export default function AssignmentDetails() {
   const [userId, setUserId] = useState<string | null>(null);
   const [alreadyUploaded, setAlreadyUploaded] = useState(false);
   const [uploadedFileUrl, setUploadedFileUrl] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isDiscussionModalVisible, setIsDiscussionModalVisible] = useState(false);
 
   useEffect(() => {
     getUserData();
@@ -77,6 +90,11 @@ export default function AssignmentDetails() {
         setUsername(storedUsername);
         setStudentId(storedUsername);
         setUserId(storedUsername); // Add this line to set userId
+        
+        // If we already have assignment ID, check upload status immediately
+        if (params.id) {
+          checkIfUploaded(storedUsername);
+        }
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -124,21 +142,28 @@ export default function AssignmentDetails() {
     }
   };
 
+  // Make sure this method uses the correct API routes
   const checkIfUploaded = async (userId: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/uploads/assignments/${params.id}/user/${userId}`);
       if (response.ok) {
         const data = await response.json();
+        console.log("Upload status check:", data);
+        
         if (data.uploaded) {
           setAlreadyUploaded(true);
           setUploadedFileUrl(data.fileUrl);
-          // Update assignment with submission details
+          
+          // Update assignment with submission details including grade and feedback if available
           setAssignment(prev => prev ? {
             ...prev,
             submissionDetails: {
               submittedAt: data.submittedAt,
               fileName: data.fileName,
-              fileUrl: data.fileUrl
+              fileUrl: data.fileUrl,
+              grade: data.grade,
+              feedback: data.feedback,
+              status: data.status
             }
           } : null);
         }
@@ -177,6 +202,7 @@ export default function AssignmentDetails() {
     setFile(null);
   };
 
+  // Ensure upload function uses the correct endpointh
   const uploadFile = async () => {
     if (!file || !userId) {
       Alert.alert("Error", !file ? "No file selected" : "User ID not found");
@@ -189,12 +215,13 @@ export default function AssignmentDetails() {
       
       formData.append('file', {
         uri: file.uri,
-        type: 'application/pdf',
+        type: file.mimeType || 'application/pdf',
         name: file.name || 'assignment.pdf'
       } as any);
       
       formData.append('userId', userId);
   
+      // Updated to match the route in the server.js file
       const response = await fetch(`${API_BASE_URL}/uploads/${params.id}`, {
         method: 'POST',
         body: formData,
@@ -222,13 +249,18 @@ export default function AssignmentDetails() {
       Alert.alert("Success", "Assignment uploaded successfully!");
       setFile(null);
       
+      // Refresh data to ensure everything is up to date
+      refreshAll();
+      
     } catch (error) {
-      Alert.alert("Error", `Upload failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      Alert.alert("Error", `Upload failed: ${errorMessage}`);
     } finally {
       setUploading(false);
     }
   };
 
+  // Ensure replace function uses the correct endpoint
   const replaceFile = async () => {
     if (!file || !userId) {
       Alert.alert("Error", !file ? "No file selected" : "User ID not found");
@@ -255,6 +287,7 @@ export default function AssignmentDetails() {
         fileName: file.name
       });
 
+      // Updated to match the route in the server.js file
       const response = await fetch(`${API_BASE_URL}/uploads/${params.id}/replace`, {
         method: 'PUT',
         body: formData,
@@ -279,11 +312,29 @@ export default function AssignmentDetails() {
         throw new Error(result.error || 'Replacement failed');
       }
 
+      // Update local state with the new uploaded file information
       setUploadedFileUrl(result.submission.fileUrl);
-      fetchAssignmentDetails();
-      checkIfUploaded(userId);
-      Alert.alert("Success", "Assignment replaced successfully!");
+      setAlreadyUploaded(true);
+      
+      // Update assignment with submission details - prevent view from disappearing
+      setAssignment(prev => {
+        if (!prev) return null;
+        
+        return {
+          ...prev,
+          submissionDetails: {
+            submittedAt: result.submission.lastUpdated || result.submission.submittedAt,
+            fileName: result.submission.fileName,
+            fileUrl: result.submission.fileUrl
+          }
+        };
+      });
+      
       setFile(null);
+      Alert.alert("Success", "Assignment replaced successfully!");
+      
+      // Refresh data to ensure everything is up to date
+      refreshAll();
       
     } catch (error) {
       console.error('File replacement error:', error);
@@ -320,486 +371,992 @@ export default function AssignmentDetails() {
   };
 
   const viewUploadedAssignment = () => {
-    if (uploadedFileUrl) {
-      // Open the PDF in device's default viewer
-      Linking.openURL(uploadedFileUrl);
+    // Use either the saved URL in state or from the assignment object
+    const fileUrl = uploadedFileUrl || (assignment?.submissionDetails?.fileUrl);
+    
+    if (fileUrl) {
+      console.log("Opening file URL:", fileUrl);
+      Linking.openURL(fileUrl).catch(err => {
+        console.error("Error opening URL:", err);
+        Alert.alert("Error", "Could not open the file. Please try again later.");
+      });
+    } else {
+      Alert.alert("Error", "No file URL available");
     }
   };
 
-  return (
-    <View style={styles.scrollContainer}>
-      <ScrollView style={styles.mainContainer}>
-        <View style={styles.container}>
-          {assignment ? (
-            <View style={styles.assignmentCard}>
-              <Text style={styles.title}>{assignment.title}</Text>
-              <Text style={styles.description}>{assignment.description}</Text>
-              <Text style={styles.dueDate}>Due: {new Date(assignment.dueDate).toDateString()}</Text>
-              {assignment.submissionDetails && (
-                <View style={styles.submissionDetails}>
-                  <Text style={styles.submittedText}>
-                    Submitted on: {new Date(assignment.submissionDetails.submittedAt).toLocaleString()}
-                  </Text>
-                  <Text style={styles.submittedFile}>
-                    File: {assignment.submissionDetails.fileName}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ) : (
-            <ActivityIndicator size="large" color="#007bff" />
-          )}
+  // Add this useEffect to make sure we maintain the uploaded state
+  useEffect(() => {
+    if (assignment?.submissionDetails && !alreadyUploaded) {
+      setAlreadyUploaded(true);
+      setUploadedFileUrl(assignment.submissionDetails.fileUrl);
+    }
+  }, [assignment]);
 
-          {!alreadyUploaded && (
-            <View style={styles.uploadSection}>
-              <Text style={styles.sectionTitle}>Assignment Submission</Text>
-              <Text style={styles.supportedFormats}>
-                Supported formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, ZIP, RAR
+  // Add a refresh function to update all data
+  const refreshAll = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchAssignmentDetails(),
+        fetchComments(),
+        userId ? checkIfUploaded(userId) : Promise.resolve()
+      ]);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // Add this function to toggle modal visibility
+  const toggleDiscussionModal = () => {
+    setIsDiscussionModalVisible(!isDiscussionModalVisible);
+  };
+
+  return (
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+    >
+      <ScrollView 
+        style={styles.mainContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refreshAll}
+            colors={["#1976d2"]}
+            tintColor={"#1976d2"}
+          />
+        }
+      >
+        {assignment ? (
+          <View style={styles.assignmentCard}>
+            <View style={styles.assignmentHeader}>
+              <Text style={styles.title}>{assignment.title}</Text>
+              <View style={styles.dueDateContainer}>
+                <Ionicons name="calendar-outline" size={18} color="#e74c3c" />
+                <Text style={styles.dueDate}>
+                  Due: {new Date(assignment.dueDate).toLocaleDateString(undefined, { 
+                    weekday: 'short', 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+            
+            <Text style={styles.description}>{assignment.description}</Text>
+            
+            {/* Display submission status */}
+            <View style={styles.submissionStatusContainer}>
+              <Text style={styles.submissionStatusTitle}>
+                Submission Status
               </Text>
-              {file ? (
-                <View style={styles.fileContainer}>
-                  <Text style={styles.fileName}>{file.name}</Text>
-                  <TouchableOpacity style={styles.cancelButton} onPress={removeFile}>
-                    <Text style={styles.cancelButtonText}>X</Text>
-                  </TouchableOpacity>
+              
+              {assignment.submissionDetails ? (
+                <View style={styles.submissionComplete}>
+                  <Ionicons name="checkmark-circle" size={24} color="#2ecc71" />
+                  <Text style={styles.submissionCompleteText}>Submitted</Text>
                 </View>
               ) : (
-                <TouchableOpacity style={styles.selectButton} onPress={pickFile}>
-                  <Text style={styles.selectButtonText}>Select File</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity 
-                style={[styles.submitButton, !file && styles.disabledButton]} 
-                onPress={uploadFile} 
-                disabled={!file || uploading}
-              >
-                <Text style={styles.submitButtonText}>
-                  {uploading ? "Uploading..." : "Submit"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={styles.discussionHeader}>
-            <Text style={styles.sectionTitle}>Discussion</Text>
-          </View>
-        </View>
-      </ScrollView>
-
-      <View style={styles.commentsSection}>
-        {loading ? (
-          <ActivityIndicator size="large" />
-        ) : (
-          <FlatList
-            data={[...comments].reverse()}
-            keyExtractor={(item) => item._id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onLongPress={() => handleLongPress(item._id, item.user)}
-                delayLongPress={500}
-              >
-                <View style={[
-                  styles.comment,
-                  item.user === username && styles.ownComment
-                ]}>
-                  <View style={styles.commentHeader}>
-                    <Text style={styles.commentUser}>
-                      {item.user === username ? `you (${item.user})` : item.user}
-                    </Text>
-                    <Text style={styles.commentTime}>{formatDate(item.createdAt)}</Text>
-                  </View>
-                  <Text>{item.text}</Text>
+                <View style={styles.submissionPending}>
+                  <Ionicons name="time-outline" size={24} color="#f39c12" />
+                  <Text style={styles.submissionPendingText}>Not submitted yet</Text>
                 </View>
-              </TouchableOpacity>
+              )}
+            </View>
+            
+            {/* Display submission details if assignment is already submitted */}
+            {assignment.submissionDetails && (
+              <View style={styles.submissionDetails}>
+                <View style={styles.submissionInfoRow}>
+                  <Ionicons name="time-outline" size={18} color="#7f8c8d" />
+                  <Text style={styles.submittedText}>
+                    Submitted: {new Date(assignment.submissionDetails.submittedAt).toLocaleString()}
+                  </Text>
+                </View>
+                
+                <View style={styles.submissionInfoRow}>
+                  <Ionicons name="document-outline" size={18} color="#7f8c8d" />
+                  <Text style={styles.submittedFile} numberOfLines={1} ellipsizeMode="middle">
+                    {assignment.submissionDetails.fileName}
+                  </Text>
+                </View>
+                
+                {/* Display submission status */}
+                <View style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>Status:</Text>
+                  <View style={[
+                    styles.statusBadge,
+                    assignment.submissionDetails.status === "graded" ? styles.gradedBadge : styles.pendingBadge
+                  ]}>
+                    <Text style={styles.statusBadgeText}>
+                      {assignment.submissionDetails.status === "graded" ? "Graded" : "Pending"}
+                    </Text>
+                  </View>
+                </View>
+                
+                {/* Display grade if available */}
+                {assignment.submissionDetails.grade !== undefined && (
+                  <View style={styles.gradeContainer}>
+                    <View style={styles.gradeHeader}>
+                      <Ionicons name="ribbon-outline" size={22} color="#3498db" />
+                      <Text style={styles.gradeTitle}>Grade</Text>
+                    </View>
+                    <View style={styles.gradeBox}>
+                      <Text style={styles.gradeValue}>{assignment.submissionDetails.grade}</Text>
+                      <Text style={styles.gradeMax}>/100</Text>
+                    </View>
+                  </View>
+                )}
+                
+                {/* Display feedback if available */}
+                {assignment.submissionDetails.feedback && (
+                  <View style={styles.feedbackContainer}>
+                    <View style={styles.feedbackHeader}>
+                      <Ionicons name="chatbox-ellipses-outline" size={22} color="#3498db" />
+                      <Text style={styles.feedbackTitle}>Teacher Feedback</Text>
+                    </View>
+                    <View style={styles.feedbackBox}>
+                      <Text style={styles.feedbackText}>
+                        {assignment.submissionDetails.feedback}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                
+                {/* View uploaded file button */}
+                <TouchableOpacity 
+                  style={styles.viewButton}
+                  onPress={viewUploadedAssignment}
+                >
+                  <Ionicons name="eye-outline" size={18} color="#fff" />
+                  <Text style={styles.viewButtonText}>View Submission</Text>
+                </TouchableOpacity>
+
+                {/* File replacement section */}
+                <View style={styles.replaceContainer}>
+                  <Text style={styles.replaceText}>Replace your submission</Text>
+                  {file ? (
+                    <View style={styles.fileContainer}>
+                      <View style={styles.fileIconContainer}>
+                        <Ionicons name="document-text-outline" size={24} color="#3498db" />
+                      </View>
+                      <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
+                        {file.name}
+                      </Text>
+                      <TouchableOpacity style={styles.cancelButton} onPress={removeFile}>
+                        <Ionicons name="close-circle" size={22} color="#e74c3c" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.selectReplaceButton}
+                      onPress={pickFile}
+                    >
+                      <Ionicons name="cloud-upload-outline" size={20} color="#fff" />
+                      <Text style={styles.selectReplaceButtonText}>Select New File</Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {file && (
+                    <TouchableOpacity 
+                      style={styles.replaceFileButton}
+                      onPress={replaceFile}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <View style={styles.uploadingContainer}>
+                          <ActivityIndicator size="small" color="#fff" />
+                          <Text style={styles.replaceFileButtonText}>Uploading...</Text>
+                        </View>
+                      ) : (
+                        <>
+                          <Ionicons name="refresh-outline" size={20} color="#fff" />
+                          <Text style={styles.replaceFileButtonText}>Replace Submission</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
             )}
-            style={styles.commentsList}
-          />
+          </View>
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3498db" />
+          </View>
         )}
 
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Add a comment..."
-            value={newComment}
-            onChangeText={setNewComment}
-          />
-          <TouchableOpacity style={styles.addButton} onPress={addComment}>
-            <Text style={styles.addButtonText}>Post</Text>
-          </TouchableOpacity>
+        {/* Show upload section only if not already uploaded */}
+        {!alreadyUploaded && (
+          <View style={styles.uploadSection}>
+            <View style={styles.uploadSectionHeader}>
+              <Ionicons name="cloud-upload-outline" size={24} color="#3498db" />
+              <Text style={styles.sectionTitle}>Submit Assignment</Text>
+            </View>
+            
+            <Text style={styles.supportedFormats}>
+              Supported formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, ZIP, RAR
+            </Text>
+            
+            {file ? (
+              <View style={styles.fileContainer}>
+                <View style={styles.fileIconContainer}>
+                  <Ionicons name="document-text-outline" size={24} color="#3498db" />
+                </View>
+                <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle">
+                  {file.name}
+                </Text>
+                <TouchableOpacity style={styles.cancelButton} onPress={removeFile}>
+                  <Ionicons name="close-circle" size={22} color="#e74c3c" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.selectButton} onPress={pickFile}>
+                <Ionicons name="attach-outline" size={20} color="#fff" />
+                <Text style={styles.selectButtonText}>Select File</Text>
+              </TouchableOpacity>
+            )}
+            
+            <TouchableOpacity 
+              style={[styles.submitButton, !file && styles.disabledButton]} 
+              onPress={uploadFile} 
+              disabled={!file || uploading}
+            >
+              {uploading ? (
+                <View style={styles.uploadingContainer}>
+                  <ActivityIndicator size="small" color="#fff" />
+                  <Text style={styles.submitButtonText}>Uploading...</Text>
+                </View>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                  <Text style={styles.submitButtonText}>Submit Assignment</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+      
+      {/* Floating Discussion Button */}
+      <TouchableOpacity 
+        style={styles.floatingButton}
+        onPress={toggleDiscussionModal}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="chatbubbles" size={28} color="#fff" />
+        {comments.length > 0 && (
+          <View style={styles.commentBadge}>
+            <Text style={styles.commentBadgeText}>
+              {comments.length > 99 ? '99+' : comments.length}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Discussion Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isDiscussionModalVisible}
+        onRequestClose={toggleDiscussionModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.discussionHeaderContent}>
+                <Ionicons name="chatbubbles-outline" size={24} color="#3498db" />
+                <Text style={styles.modalTitle}>Discussion</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={toggleDiscussionModal}
+              >
+                <Ionicons name="close" size={24} color="#7f8c8d" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Discussion content */}
+            <View style={styles.discussionContainer}>
+              {loading ? (
+                <ActivityIndicator size="large" color="#3498db" style={styles.commentsLoading} />
+              ) : comments.length === 0 ? (
+                <View style={styles.noCommentsContainer}>
+                  <Ionicons name="chatbox-outline" size={50} color="#bdc3c7" />
+                  <Text style={styles.noCommentsText}>No comments yet</Text>
+                  <Text style={styles.startDiscussionText}>Be the first to start the discussion</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={[...comments].reverse()}
+                  keyExtractor={(item) => item._id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      onLongPress={() => handleLongPress(item._id, item.user)}
+                      delayLongPress={500}
+                    >
+                      <View style={[
+                        styles.comment,
+                        item.user === username && styles.ownComment
+                      ]}>
+                        <View style={styles.commentHeader}>
+                          <View style={styles.commentUserInfo}>
+                            <View style={styles.commentUserAvatar}>
+                              <Text style={styles.commentUserInitial}>
+                                {item.user.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                            <Text style={styles.commentUser}>
+                              {item.user === username ? `You` : item.user}
+                            </Text>
+                          </View>
+                          <Text style={styles.commentTime}>{formatDate(item.createdAt)}</Text>
+                        </View>
+                        <Text style={styles.commentText}>{item.text}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                  contentContainerStyle={styles.commentsListContent}
+                />
+              )}
+            </View>
+
+            {/* Comment input section in modal */}
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
+              style={styles.modalInputWrapper}
+            >
+              <View style={styles.modalInputContainer}>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Add a comment..."
+                  value={newComment}
+                  onChangeText={setNewComment}
+                  multiline={true}
+                  maxLength={500}
+                />
+                <TouchableOpacity 
+                  style={[styles.modalAddButton, !newComment.trim() && styles.disabledAddButton]} 
+                  onPress={() => {
+                    addComment();
+                    if (newComment.trim()) {
+                      // Optional: close keyboard after submitting
+                      // Keyboard.dismiss();
+                    }
+                  }}
+                  disabled={!newComment.trim()}
+                >
+                  <Ionicons name="send" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
         </View>
-      </View>
-    </View>
+      </Modal>
+    </KeyboardAvoidingView>
   );
 }
 
+const windowHeight = Dimensions.get('window').height;
+const windowWidth = Dimensions.get('window').width;
+
 const styles = StyleSheet.create({
-  scrollContainer: {
+  container: {
     flex: 1,
-    backgroundColor: "#f0f2f5",
+    backgroundColor: "#f5f5f5",
   },
-  container: { 
-    padding: 16,
+  mainContainer: {
+    flex: 1,
   },
-  title: { 
-    fontSize: 26, 
-    fontWeight: "800",
-    marginBottom: 12,
-    color: "#1a1a1a"
-  },
-  description: { 
-    fontSize: 16, 
-    color: "#4a4a4a", 
-    marginBottom: 12,
-    lineHeight: 24
+  loadingContainer: {
+    padding: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   assignmentCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
+    padding: 20,
+    margin: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  assignmentHeader: {
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#2c3e50",
+    marginBottom: 8,
+    lineHeight: 28,
+  },
+  dueDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  dueDate: {
+    fontSize: 14,
+    color: "#e74c3c",
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#ecf0f1',
+    marginVertical: 12,
+  },
+  description: {
+    fontSize: 16,
+    color: "#34495e",
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  submissionStatusContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  submissionStatusTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2c3e50",
+    marginBottom: 8,
+  },
+  submissionComplete: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8f5e9',
+    padding: 12,
+    borderRadius: 8,
+  },
+  submissionCompleteText: {
+    color: '#2ecc71',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  submissionPending: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff9e6',
+    padding: 12,
+    borderRadius: 8,
+  },
+  submissionPendingText: {
+    color: '#f39c12',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  submissionDetails: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  submissionInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  submittedText: {
+    color: "#7f8c8d",
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  submittedFile: {
+    color: "#7f8c8d",
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+  },
+  viewButton: {
+    backgroundColor: '#3498db',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  viewButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  replaceContainer: {
+    marginTop: 8,
+    padding: 16,
+    backgroundColor: '#f5f6fa',
+    borderRadius: 12,
+    borderColor: '#e1e4e8',
+    borderWidth: 1,
+  },
+  replaceText: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 12,
+    color: '#2c3e50',
   },
   uploadSection: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
+    padding: 20,
+    margin: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  comment: { 
-    padding: 16,
-    marginHorizontal: 12,
-    marginVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
+  uploadSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#2c3e50",
+    marginLeft: 8,
+  },
+  supportedFormats: {
+    fontSize: 13,
+    color: '#7f8c8d',
+    marginBottom: 16,
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderColor: '#e1e4e8',
+    borderWidth: 1,
+  },
+  fileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f5f6fa',
+    borderRadius: 8,
+    borderColor: '#e1e4e8',
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  fileIconContainer: {
+    marginRight: 10,
+  },
+  fileName: {
+    flex: 1,
+    fontSize: 14,
+    color: '#34495e',
+  },
+  cancelButton: {
+    padding: 4,
+  },
+  selectButton: {
+    backgroundColor: '#3498db',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  selectButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 15,
+    marginLeft: 8,
+  },
+  submitButton: {
+    backgroundColor: '#2ecc71',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#95a5a6',
+    opacity: 0.8,
+  },
+  selectReplaceButton: {
+    backgroundColor: '#f39c12',
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  selectReplaceButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 15,
+    marginLeft: 8,
+  },
+  replaceFileButton: {
+    backgroundColor: '#e74c3c',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  replaceFileButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 15,
+    marginLeft: 8,
+  },
+  uploadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  discussionSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    margin: 16,
+    marginBottom: 80,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  discussionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  commentsLoading: {
+    padding: 40,
+  },
+  noCommentsContainer: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  noCommentsText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#7f8c8d',
+    marginTop: 12,
+  },
+  startDiscussionText: {
+    fontSize: 14,
+    color: '#95a5a6',
+    marginTop: 4,
+  },
+  commentsList: {
+    marginTop: 8,
+  },
+  commentsListContent: {
+    paddingBottom: 20,
+  },
+  comment: { 
+    padding: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
   ownComment: {
-    backgroundColor: '#e3f2fd',
+    backgroundColor: '#ebf5fb',
     borderLeftWidth: 4,
-    borderLeftColor: '#1976d2',
+    borderLeftColor: '#3498db',
   },
   commentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  commentUser: { 
-    fontWeight: "700",
+  commentUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  commentUserAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#3498db',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  commentUserInitial: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  commentUser: {
+    fontWeight: "600",
     fontSize: 15,
-    color: '#1a1a1a'
+    color: '#2c3e50',
   },
   commentTime: {
-    color: '#757575',
+    color: '#95a5a6',
     fontSize: 13,
   },
+  commentText: {
+    fontSize: 15,
+    color: '#34495e',
+    lineHeight: 22,
+  },
   inputContainer: { 
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row", 
     alignItems: "center", 
     padding: 12,
     backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#ecf0f1',
   },
   input: { 
     flex: 1, 
     borderWidth: 1, 
     borderColor: "#e0e0e0", 
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 8,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginRight: 10,
     backgroundColor: '#ffffff',
-    fontSize: 15
-  },
-  addButton: { 
-    backgroundColor: "#1976d2", 
-    padding: 12, 
-    borderRadius: 12,
-    minWidth: 80,
-    alignItems: 'center'
-  },
-  addButtonText: { 
-    color: "#fff", 
-    fontWeight: "600",
-    fontSize: 15
-  },
-  submitButton: {
-    backgroundColor: '#2e7d32',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  viewButton: {
-    backgroundColor: '#1976d2',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 12,
-  },
-  viewButtonText: {
-    color: '#ffffff',
     fontSize: 15,
-    fontWeight: '600',
+    maxHeight: 100,
   },
-  submissionDetails: {
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: '#e8f5e9',
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2e7d32',
-  },
-  scrollContainer: {
-    flex: 1,
-    backgroundColor: "#f8f9fa",
-  },
-  container: { 
-    padding: 20,
-  },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 10 },
-  description: { fontSize: 16, color: "#495057", marginBottom: 10 },
-  uploadButton: { backgroundColor: "#007bff", padding: 10, borderRadius: 8, marginBottom: 10, alignItems: "center" },
-  uploadButtonText: { color: "#fff", fontWeight: "bold" },
-  uploadedFile: { fontSize: 16, color: "#28a745", marginBottom: 10, fontWeight: "bold" },
-  inputContainer: { flexDirection: "row", alignItems: "center", marginTop: 10 },
-  input: { flex: 1, borderWidth: 1, borderColor: "#ddd", borderRadius: 8, padding: 10 },
-  addButton: { backgroundColor: "#007bff", padding: 10, borderRadius: 8 },
-  addButtonText: { color: "#fff", fontWeight: "bold" },
-  comment: { 
-    padding: 15,
-    marginHorizontal: 10,
-    marginVertical: 5,
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3, // for Android shadow
-    borderBottomWidth: 0, // remove the border since we have shadow
-  },
-  commentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 5,
-  },
-  commentUser: { 
-    fontWeight: "bold" 
-  },
-  commentTime: {
-    color: '#6c757d',
-    fontSize: 12,
-  },
-  dueDate: { fontSize: 16, color: "#6c757d", marginBottom: 10 },
-  sectionTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 0 },
-  fileContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    backgroundColor: '#e9ecef',
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  fileName: {
-    flex: 1,
-    fontSize: 14,
-  },
-  cancelButton: {
-    padding: 5,
-    backgroundColor: '#dc3545',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+  addButton: {
+    backgroundColor: "#3498db",
+    padding: 12, 
+    borderRadius: 24,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelButtonText: {
+  disabledAddButton: {
+    backgroundColor: '#95a5a6',
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#3498db', // Using the current blue theme
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    zIndex: 10,
+  },
+  commentBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#e74c3c',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  commentBadgeText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
   },
-  selectButton: {
-    backgroundColor: '#007bff',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  selectButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  submitButton: {
-    backgroundColor: '#28a745',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  disabledButton: {
-    backgroundColor: '#6c757d',
-    opacity: 0.65,
-  },
-  uploadedText: {
-    color: '#28a745',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  mainContainer: {
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
-  commentsSection: {
-    height: '45%',
-    backgroundColor: '#f8f9fa', // lighter background to show shadow better
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-  },
-  commentsList: {
-    flex: 1,
-    paddingVertical: 10,
-  },
-  ownComment: {
-    backgroundColor: '#e8f5e9',
-    shadowColor: '#1b5e20',
-  },
-  discussionHeader: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+  modalContent: {
+    height: windowHeight * 0.8,
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    marginTop: 10,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
   },
-  assignmentCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  uploadSection: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  uploadedContainer: {
-    alignItems: 'center',
-    padding: 15,
-    backgroundColor: '#e8f5e9',
-    borderRadius: 8,
-  },
-  viewButton: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  viewButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  submissionDetails: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#e8f5e9',
-    borderRadius: 8,
-  },
-  submittedText: {
-    color: '#2e7d32',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  submittedFile: {
-    color: '#1b5e20',
-    fontSize: 14,
-    marginTop: 5,
-  },
-  replaceContainer: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    width: '100%',
-  },
-  replaceButtonsRow: {
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ecf0f1',
+    backgroundColor: '#fff',
   },
-  replaceButton: {
-    backgroundColor: '#fd7e14',
-    padding: 10,
-    borderRadius: 8,
+  discussionHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2c3e50',
+    marginLeft: 8,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  discussionContainer: {
     flex: 1,
-    marginLeft: 10,
+    backgroundColor: '#f8f9fa',
+  },
+  modalInputWrapper: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#ecf0f1',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  modalInputContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  replaceButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  modalInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginRight: 10,
+    backgroundColor: '#ffffff',
+    fontSize: 15,
+    maxHeight: 100,
   },
-  replaceFileButton: {
-    backgroundColor: '#fd7e14',
-    padding: 10,
+  modalAddButton: {
+    backgroundColor: "#3498db",
+    padding: 12,
+    borderRadius: 24,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  statusLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginRight: 8,
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+  },
+  gradedBadge: {
+    backgroundColor: '#d5f5e3',
+  },
+  pendingBadge: {
+    backgroundColor: '#fef9e7',
+  },
+  statusBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  gradeContainer: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  gradeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  gradeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginLeft: 8,
+  },
+  gradeBox: {
+    backgroundColor: '#ebf5fb',
+    padding: 16,
     borderRadius: 8,
-    marginTop: 10,
-    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+  },
+  gradeValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#2980b9',
+  },
+  gradeMax: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#7f8c8d',
+    marginLeft: 4,
+  },
+  feedbackContainer: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  feedbackHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  replaceFileButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  feedbackTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginLeft: 8,
   },
-  supportedFormats: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 10,
-    textAlign: 'center',
+  feedbackBox: {
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3498db',
+  },
+  feedbackText: {
+    fontSize: 15,
+    color: '#34495e',
+    lineHeight: 22,
+    fontStyle: 'italic',
   },
 });

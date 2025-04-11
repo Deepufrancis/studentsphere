@@ -5,66 +5,57 @@ const Course = require("../models/course.model");
 const User = require("../models/User");
 const Notification = require("../models/notification");
 
-
-
-/**
- * @swagger
- * /api/register:
- *   post:
- *     summary: Register a new user
- *     description: Creates a new user account (teacher or student).
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - username
- *               - password
- *               - role
- *             properties:
- *               username:
- *                 type: string
- *                 example: "johndoe"
- *               password:
- *                 type: string
- *                 example: "securepassword"
- *               role:
- *                 type: string
- *                 enum: ["teacher", "student"]
- *     responses:
- *       201:
- *         description: User created successfully
- *       400:
- *         description: Invalid input
- */
 router.post("/", async (req, res) => {
+  console.log("Enroll request body:", req.body);
   try {
     const { username, courseId } = req.body;
+    
+    // Validate input
     if (!username || !courseId) {
+      console.log("Missing fields:", { username, courseId });
       return res.status(400).json({ message: "Username and courseId are required." });
     }
 
+    // Check if user exists
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Check if course exists
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ message: "Course not found." });
+    }
+
+    // Check for existing registration
     const existingRegistration = await Registration.findOne({ username, course: courseId });
     if (existingRegistration) {
+      console.log("Duplicate registration found:", existingRegistration);
       return res.status(400).json({ message: "Already registered for this course." });
     }
 
     const registration = new Registration({ username, course: courseId, status: "pending" });
-    await registration.save();
+    const savedRegistration = await registration.save();
+    console.log("Registration saved successfully:", savedRegistration);
 
-    res.status(201).json({ message: "Course registration request sent." });
+    res.status(201).json({ message: "Course registration request sent.", registration: savedRegistration });
   } catch (error) {
-    res.status(500).json({ message: "Server error.", error });
+    console.error("Registration error details:", error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: "Invalid registration data.", error: error.message });
+    }
+    if (error.name === 'MongoError' && error.code === 11000) {
+      return res.status(400).json({ message: "Duplicate registration." });
+    }
+    res.status(500).json({ message: "Server error occurred while processing registration." });
   }
 });
 
 router.get("/status/:username", async (req, res) => {
     try {
       const { username } = req.params;
-      console.log("Fetching registration for username:", username); // Debug log
+      console.log("Fetching registration for username:", username); // Debug logs
 
       const registrations = await Registration.find({ username });
       
@@ -196,34 +187,29 @@ router.delete("/reject/:id", async (req, res) => {
  router.get("/student/:username", async (req, res) => {
   const username = req.params.username;
  
-
   try {
       // Check if the student exists by username
       const student = await User.findOne({ username });
 
       if (!student) {
-         
           return res.status(404).json({ error: "Student not found" });
       }
 
-      // Fetch all registrations for the student where the status is "approved"
+      // Fetch all registrations for the student where the status is "approved" or "registered"
       const approvedRegistrations = await Registration.find({ 
           username: student.username,
-          status: "registered" // Only get approved registrations
+          status: { $in: ["registered", "approved"] } // Include both statuses
       });
 
       if (approvedRegistrations.length === 0) {
-          
           return res.status(404).json({ error: "No approved courses found" });
       }
 
       // Extract course IDs from the approved registrations
       const courseIds = approvedRegistrations.map(reg => reg.course);
-      
 
       // Fetch course details for the approved courses
       const approvedCourses = await Course.find({ _id: { $in: courseIds } });
-     
 
       // Respond with the approved courses
       res.json({
@@ -232,7 +218,6 @@ router.delete("/reject/:id", async (req, res) => {
       });
       
   } catch (error) {
-      
       res.status(500).json({ error: "Internal server error" });
   }
 });
