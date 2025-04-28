@@ -84,7 +84,7 @@ router.post('/:assignmentId', upload.single('file'), async (req, res) => {
       });
     }
 
-    // Create file URL (adjust as needed based on your server setup)
+    
     const fileUrl = `${req.protocol}://${req.get('host')}/uploads/assignments/${req.file.filename}`;
     
     // Create new submission record

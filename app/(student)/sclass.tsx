@@ -46,7 +46,7 @@ const LiveClassLinksScreen = () => {
   const fetchLiveClasses = async (studentUsername: string) => {
     try {
       // Fix the endpoint to match the backend route structure
-      const response = await axios.get(`${API_BASE_URL}/registration/student/${studentUsername}`);
+      const response = await axios.get(`${API_BASE_URL}/registrations/student/${studentUsername}`);
       
       if (!response.data || !response.data.approvedCourses) {
         console.log("API response format:", response.data);

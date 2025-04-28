@@ -11,7 +11,7 @@ const messageSchema = new mongoose.Schema({
 
 const chatSchema = new mongoose.Schema({
   participants: {
-    type: [String], // e.g., ['student1', 'teacher1']
+    type: [String], // e.g., ['student1', 'tea.cher1']
     required: true,
     validate: arr => arr.length === 2,
   },

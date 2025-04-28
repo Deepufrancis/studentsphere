@@ -53,13 +53,68 @@ export default function Dashboard() {
     }).start();
   };
 
+  const buttons = [
+    [
+      {
+        icon: "book-outline",
+        text: "Register Courses",
+        onPress: () => router.push("./regcourse"),
+      },
+      {
+        icon: "document-text-outline",
+        text: "Assignments",
+        onPress: () => router.push("./(student_assignment)/AssignmentViewer"),
+      }
+    ],
+    [
+      {
+        icon: "school-outline",
+        text: "Classes",
+        onPress: () => router.push("./sclass"),
+      },
+      {
+        icon: "download-outline",
+        text: "Resources",
+        onPress: () => router.push("./resources"),
+        disabled: true,
+      }
+    ],
+    [
+      {
+        icon: "chatbubbles-outline",
+        text: "Discussions",
+        onPress: () => router.push({
+          pathname: "/schat",
+          params: { selectedRole: "student" }
+        }),
+      },
+      {
+        icon: "checkbox-outline",
+        text: "Attendance",
+        onPress: () => router.push("./sattendance"),
+      }
+    ],
+    [
+      {
+        icon: "construct-outline",
+        text: "Testing",
+        onPress: () => router.push("/(student)/testing"),
+      },
+      {
+        icon: "download-outline",
+        text: "resources",
+        onPress: () => router.push("./sresources"),
+      }
+    ]
+  ];
+
   return (
     <LinearGradient
       colors={['#f0f5ff', '#e6f0ff']}
       style={styles.mainContainer}>
       <View style={styles.cardContainer}>
         <View style={styles.headerContainer}>
-          <Text style={styles.dashboardTitle}>Student Dkashboard</Text>
+          <Text style={styles.dashboardTitle}>Student Dashboard</Text>
           {username && (
             <Text style={styles.welcomeMessage}>Welcome back, {username}!</Text>
           )}
@@ -73,89 +128,30 @@ export default function Dashboard() {
           contentContainerStyle={styles.scrollContainer}
         >
           <View style={styles.gridContainer}>
-            <View style={styles.gridRow}>
-              <TouchableOpacity 
-                style={styles.gridItem} 
-                activeOpacity={0.7}
-                onPress={() => router.push("./regcourse")}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="book-outline" size={40} color="#4a6baf" />
-                </View>
-                <Text style={styles.gridText}>Register Courses</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.gridItem} 
-                activeOpacity={0.7}
-                onPress={() => router.push("./(student_assignment)/AssignmentViewer")}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="document-text-outline" size={40} color="#4a6baf" />
-                </View>
-                <Text style={styles.gridText}>Assignments</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.gridRow}>
-              <TouchableOpacity 
-                style={styles.gridItem} 
-                activeOpacity={0.7}
-                onPress={() => router.push("./sclass")}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="school-outline" size={40} color="#4a6baf" />
-                </View>
-                <Text style={styles.gridText}>Classes</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                disabled={true} 
-                style={[styles.gridItem, styles.disabledItem]} 
-                activeOpacity={0.9}
-                onPress={() => router.push("./resources")}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="download-outline" size={40} color="#94a3b8" />
-                </View>
-                <Text style={[styles.gridText, styles.disabledText]}>Resources</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.gridRow}>
-              <TouchableOpacity 
-                style={styles.gridItem}
-                activeOpacity={0.7} 
-                onPress={() => router.push({
-                  pathname: "/(chat)/chatHome",
-                  params: { selectedRole: "student" }
-                })}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="chatbubbles-outline" size={40} color="#4a6baf" />
-                </View>
-                <Text style={styles.gridText}>Discussions</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.gridItem}
-                activeOpacity={0.7} 
-                onPress={() => router.push("./sattendance")}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="checkbox-outline" size={40} color="#4a6baf" />
-                </View>
-                <Text style={styles.gridText}>Attendance</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.gridRow}>
-              <TouchableOpacity 
-                style={styles.gridItem}
-                activeOpacity={0.7} 
-                onPress={() => router.push("/(student)/testing")}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="construct-outline" size={40} color="#4a6baf" />
-                </View>
-                <Text style={styles.gridText}>Testing</Text>
-              </TouchableOpacity>
-              
-              <View style={styles.emptyGridItem} />
-            </View>
+            {buttons.map((row, rowIndex) => (
+              <View key={rowIndex} style={styles.gridRow}>
+                {row.map((button, buttonIndex) => (
+                  <TouchableOpacity
+                    key={`${rowIndex}-${buttonIndex}`}
+                    style={[styles.gridItem, button.disabled && styles.disabledItem]}
+                    activeOpacity={button.disabled ? 0.9 : 0.7}
+                    disabled={button.disabled}
+                    onPress={button.onPress}
+                  >
+                    <View style={styles.iconContainer}>
+                      <Ionicons 
+                        name={button.icon} 
+                        size={40} 
+                        color={button.disabled ? "#94a3b8" : "#4a6baf"} 
+                      />
+                    </View>
+                    <Text style={[styles.gridText, button.disabled && styles.disabledText]}>
+                      {button.text}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
           </View>
         </ScrollView>
       </View>

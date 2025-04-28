@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Modal,
   ActivityIndicator,
-  ImageBackground,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -56,10 +55,11 @@ export default function LoginTeacher() {
   };
 
   return (
-    <ImageBackground
-      source={require("../assets/background.png")}
+    <LinearGradient
+      colors={['#f6f8ff', '#d8e2ff', '#b6cbff']}
       style={styles.background}
-      resizeMode="cover"
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
     >
       <View style={styles.container}>
         <View style={styles.contentContainer}>
@@ -108,9 +108,9 @@ export default function LoginTeacher() {
         </View>
 
         <Modal
-          animationType="fade"
-          transparent={true}
           visible={modalVisible}
+          transparent={true}
+          animationType="slide"
           onRequestClose={() => setModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
@@ -121,13 +121,13 @@ export default function LoginTeacher() {
                 style={styles.modalButton}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.modalButtonText}>OK</Text>
+                <Text style={styles.modalButtonText}>Got it</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
       </View>
-    </ImageBackground>
+    </LinearGradient>
   );
 }
 
@@ -215,51 +215,46 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
+  loader: {
+    marginTop: 24,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
-    width: '80%',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
   },
   modalTitle: {
     fontSize: 20,
     fontFamily: 'Poppins_600SemiBold',
-    marginBottom: 10,
-    color: '#1a237e',
+    color: '#111827',
+    marginBottom: 12,
   },
   modalMessage: {
     fontSize: 16,
-    marginBottom: 20,
     textAlign: 'center',
     fontFamily: 'Poppins_400Regular',
-    color: '#333',
+    color: '#4b5563',
+    marginBottom: 24,
   },
   modalButton: {
-    backgroundColor: '#1a237e',
-    paddingHorizontal: 30,
+    backgroundColor: '#4f46e5',
     paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 12,
     width: '100%',
   },
   modalButtonText: {
-    color: 'white',
+    color: '#ffffff',
     fontSize: 16,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: 'Poppins_500Medium',
     textAlign: 'center',
   },
 });

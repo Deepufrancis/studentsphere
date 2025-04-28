@@ -68,10 +68,11 @@ export default function StudentLogin() {
   };
 
   return (
-    <ImageBackground
-      source={require("../assets/background.png")}
+    <LinearGradient
+      colors={['#f6f8ff', '#d8e2ff', '#b6cbff']}
       style={styles.background}
-      resizeMode="cover"
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
     >
       <View style={styles.container}>
         <View style={styles.contentContainer}>
@@ -139,7 +140,7 @@ export default function StudentLogin() {
           </View>
         </Modal>
       </View>
-    </ImageBackground>
+    </LinearGradient>
   );
 }
 

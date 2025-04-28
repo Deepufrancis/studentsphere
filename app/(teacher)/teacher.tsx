@@ -52,20 +52,22 @@ export default function Dashboard() {
 }
 
 const menuItems = [
-  { label: "Courses", icon: "bookshelf", route: "/courses", color: "#4361EE" },
+  { label: "Classroom", icon: "google-classroom", route: "/tclassroom", color: "#4361EE" },
+  { label: "Courses", icon: "book-open-variant", route: "/courses", color: "#4361EE" },
   { label: "Assignments", icon: "file-document-outline", route: "/assignments", color: "#3DAD5B" },
-  { label: "Classes", icon: "school", route: "/class", color: "#FF6B6B" },
+  { label: "Classes", icon: "school-outline", route: "/class", color: "#FF6B6B" },
   { label: "Requests", icon: "email-outline", route: "/Requests", color: "#FFC857" },
-  { label: "Discussions", icon: "message-text-outline", route: "/(chat)/chatHome", color: "#845EC2" },
+  { label: "Discussions", icon: "forum-outline", route: "/tchat", color: "#845EC2" },
   { label: "Attendance", icon: "calendar-check", route: "/attendance", color: "#00C2A8" },
-  { label: "Exams", icon: "clipboard-text-outline", route: "/exams/exams", color: "#FF6B6B" },
-  { label: "Profile", icon: "account-circle", route: "/teacherProfile", color: "#4D8076" },
+  { label: "Exams", icon: "file-certificate-outline", route: "/exams/exams", color: "#FF6B6B" },
+  { label: "Resources", icon: "file-excel", route: "/resources", color: "#4D8076" },
+  { label: "excel upload", icon: "file-excel", route: "/excelup", color: "#4D8076" },
 ];
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f7",
+    backgroundColor: "#eef2f5", // updated background for a softer look
     paddingTop: 60,
     paddingHorizontal: 20,
   },
@@ -78,12 +80,12 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "48%",
-    marginVertical: 10,
+    marginVertical: 12, // increased margin for spacing
     borderRadius: 16,
-    elevation: 3,
+    elevation: 4, // deeper shadow for a subtle lift
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
     shadowRadius: 4,
   },
   cardBackground: {
@@ -91,14 +93,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 16,
     backgroundColor: "#FFF",
-    borderWidth: 0,
+    borderWidth: 1, // added border for definition
+    borderColor: "#e0e0e0",
   },
   dashboardTitle: {
-    fontSize: 28,
+    fontSize: 30, // increased font size for prominence
     fontFamily: "Poppins_700Bold",
     color: "#1a1a1a",
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 10, // slightly increased margin
+    textShadowColor: "rgba(0, 0, 0, 0.1)", // subtle text shadow for improved aesthetics
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   cardText: {
     marginTop: 12,

@@ -40,35 +40,65 @@ router.get('/:user1/:user2', async (req, res) => {
   }
 });
 
-// Get recent chats for a user
+// Get recent chats for a user.
 router.get('/recent/:username', async (req, res) => {
   try {
+    const username = req.params.username;
+    console.log(`Fetching recent chats for user: ${username}`);
+    
+    // Find all chats where the user is a participant and has at least one message
     const chats = await Chat.find({
-      participants: req.params.username,
+      participants: username,
       'messages.0': { $exists: true } // Only get chats with messages
     })
     .sort({ updatedAt: -1 }) // Sort by latest activity
     .limit(20); // Limit to 20 most recent chats
 
+    console.log(`Found ${chats.length} chats for ${username}`);
+    
+    if (chats.length === 0) {
+      return res.status(200).json([]);
+    }
+
     const recentChats = chats.map(chat => {
-      const otherParticipant = chat.participants.find(p => p !== req.params.username);
+      // Find the other participant in the conversation
+      const otherParticipant = chat.participants.find(p => p !== username);
+      // Get the last message in the chat
       const lastMessage = chat.messages[chat.messages.length - 1];
       
       return {
         chatId: chat._id,
         participant: otherParticipant,
-        lastMessage: {
+        lastMessage: lastMessage ? {
           sender: lastMessage.sender,
           message: lastMessage.message,
           timestamp: lastMessage.timestamp
-        },
+        } : null,
         updatedAt: chat.updatedAt
       };
     });
 
     res.status(200).json(recentChats);
   } catch (err) {
+    console.error('Error fetching recent chats:', err);
     res.status(500).json({ success: false, error: 'Failed to fetch recent chats' });
+  }
+});
+
+// Check if chat exists between users
+router.get('/exists/:username/:otherUsername', async (req, res) => {
+  try {
+    const participants = [req.params.username, req.params.otherUsername].sort();
+    
+    const chat = await Chat.findOne({ 
+      participants,
+      'messages.0': { $exists: true } // Only count chats with messages
+    });
+    
+    res.status(200).json({ exists: !!chat, chatId: chat?._id });
+  } catch (err) {
+    console.error('Error checking if chat exists:', err);
+    res.status(500).json({ success: false, error: 'Failed to check chat existence' });
   }
 });
 
@@ -123,6 +153,28 @@ router.delete('/:chatId/messages/:messageId', async (req, res) => {
     res.status(200).json({ success: true, message: 'Message deleted' });
   } catch (err) {
     res.status(500).json({ success: false, error: 'Failed to delete message' });
+  }
+});
+
+// Search for chats where a username is in participants (case-insensitive, partial match)
+router.get('/search-participants/:query', async (req, res) => {
+  try {
+    const query = req.params.query;
+    // Case-insensitive, partial match for participants
+    const chats = await Chat.find({
+      participants: { $elemMatch: { $regex: query, $options: 'i' } }
+    });
+
+    // Return chat _id and participants only for search results
+    const results = chats.map(chat => ({
+      chatId: chat._id,
+      participants: chat.participants
+    }));
+
+    res.status(200).json(results);
+  } catch (err) {
+    console.error('Error searching participants:', err);
+    res.status(500).json({ success: false, error: 'Failed to search participants' });
   }
 });
 

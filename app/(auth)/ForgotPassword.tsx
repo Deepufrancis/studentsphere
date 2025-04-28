@@ -1,246 +1,151 @@
-import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from "react-native";
-import { NavigationProp } from "@react-navigation/native";
+import React, { useState } from 'react';
+import axios from 'axios';
 import { API_BASE_URL } from "../constants";
 
-const ForgotPassword = ({ navigation }: { navigation: NavigationProp<any> }) => {
-  const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: Reset Password
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+const PasswordReset = () => {
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [step, setStep] = useState(1); // 1: Request OTP, 2: Verify OTP, 3: Reset Password
+  const [message, setMessage] = useState('');
 
-  const handleSendOTP = async () => {
+  // Request OTP from backend
+  const handleRequestOTP = async (e) => {
+    e.preventDefault();
     if (!email) {
-      Alert.alert("Error", "Please enter your registered email.");
+      setMessage('Email is required');
       return;
     }
-    
-    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/otp/send-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      
-      Alert.alert("Success", "OTP sent to your email");
-      setStep(2);
+      const response = await axios.post(`${API_BASE_URL}/forgot/send-otp`, { email });
+      setMessage(response.data.message);
+      setStep(2); // Move to OTP verification step
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "Network error. Please try again.");
-    } finally {
-      setLoading(false);
+      setMessage(error.response?.data?.message || 'Failed to send OTP');
     }
   };
 
-  const handleVerifyOTP = async () => {
+  // Verify OTP entered by the user
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault();
     if (!otp) {
-      Alert.alert("Error", "Please enter the OTP.");
+      setMessage('OTP is required');
       return;
     }
-    
-    setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/otp/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
-      });
-      
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      
-      setStep(3);
+      const response = await axios.post(`${API_BASE_URL}/forgot/verify-otp`, { email, otp });
+      setMessage(response.data.message);
+      setStep(3); // Move to reset password step
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "Invalid OTP. Please try again.");
-    } finally {
-      setLoading(false);
+      setMessage(error.response?.data?.message || 'Invalid or expired OTP');
     }
   };
 
-  const handleResetPassword = async () => {
-    if (!password || !confirmPassword) {
-      Alert.alert("Error", "Please enter both password fields.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match.");
+  // Reset the password
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!newPassword || !otp) {
+      setMessage('OTP and new password are required');
       return;
     }
     
-    setLoading(true);
+    if (newPassword.length < 6) {
+      setMessage('Password must be at least 6 characters long');
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/otp/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, newPassword: password })
+      const response = await axios.post(`${API_BASE_URL}/forgot/reset-password`, { 
+        email, 
+        otp, 
+        newPassword 
       });
-      
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      
-      Alert.alert("Success", "Password reset successful!", [
-        { text: "OK", onPress: () => navigation.navigate("index") }
-      ]);
+      setMessage(response.data.message);
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "Failed to reset password. Please try again.");
-    } finally {
-      setLoading(false);
+      setMessage(error.response?.data?.message || 'Failed to reset password');
     }
   };
-
-  const renderButton = (onPress: () => void, text: string) => (
-    <TouchableOpacity
-      onPress={onPress}
-      style={styles.button}
-      disabled={loading}
-    >
-      {loading ? (
-        <ActivityIndicator color="#FFFFFF" />
-      ) : (
-        <Text style={styles.buttonText}>{text}</Text>
-      )}
-    </TouchableOpacity>
-  );
 
   return (
-    <View style={styles.container}>
+    <div style={{ maxWidth: '400px', margin: '0 auto', padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
+      <h2>Password Reset</h2>
+
       {step === 1 && (
-        <>
-          <Text style={styles.title}>Forgot Password</Text>
-          <Text style={styles.subtitle}>
-            Enter your email address to receive a verification code
-          </Text>
-          <TextInput
-            placeholder="Email address"
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            editable={!loading}
-          />
-          {renderButton(handleSendOTP, "Send Code")}
-        </>
+        <form onSubmit={handleRequestOTP}>
+          <div>
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              style={{ width: '100%', padding: '10px', margin: '5px 0', border: '1px solid #ccc' }}
+            />
+          </div>
+          <button
+            type="submit"
+            style={{ width: '100%', padding: '10px', backgroundColor: '#4caf50', color: 'white', border: 'none', cursor: 'pointer' }}
+          >
+            Send OTP
+          </button>
+        </form>
       )}
 
       {step === 2 && (
-        <>
-          <Text style={styles.title}>Verification</Text>
-          <Text style={styles.subtitle}>
-            Enter the 6-digit code sent to {email}
-          </Text>
-          <TextInput
-            placeholder="000000"
-            style={styles.otpInput}
-            value={otp}
-            onChangeText={setOtp}
-            keyboardType="numeric"
-            maxLength={6}
-            editable={!loading}
-          />
-          {renderButton(handleVerifyOTP, "Verify Code")}
-        </>
+        <form onSubmit={handleVerifyOTP}>
+          <div>
+            <input
+              type="text"
+              placeholder="Enter OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              required
+              style={{ width: '100%', padding: '10px', margin: '5px 0', border: '1px solid #ccc' }}
+            />
+          </div>
+          <button
+            type="submit"
+            style={{ width: '100%', padding: '10px', backgroundColor: '#4caf50', color: 'white', border: 'none', cursor: 'pointer' }}
+          >
+            Verify OTP
+          </button>
+        </form>
       )}
 
       {step === 3 && (
-        <>
-          <Text style={styles.title}>New Password</Text>
-          <Text style={styles.subtitle}>
-            Create a strong password for your account
-          </Text>
-          <TextInput
-            placeholder="New Password"
-            secureTextEntry
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            editable={!loading}
-          />
-          <TextInput
-            placeholder="Confirm Password"
-            secureTextEntry
-            style={styles.input}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            editable={!loading}
-          />
-          {renderButton(handleResetPassword, "Reset Password")}
-        </>
+        <form onSubmit={handleResetPassword}>
+          <div>
+            <input
+              type="text"
+              placeholder="Enter OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              required
+              style={{ width: '100%', padding: '10px', margin: '5px 0', border: '1px solid #ccc' }}
+            />
+          </div>
+          <div>
+            <input
+              type="password"
+              placeholder="Enter new password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              style={{ width: '100%', padding: '10px', margin: '5px 0', border: '1px solid #ccc' }}
+            />
+          </div>
+          <button
+            type="submit"
+            style={{ width: '100%', padding: '10px', backgroundColor: '#4caf50', color: 'white', border: 'none', cursor: 'pointer' }}
+          >
+            Reset Password
+          </button>
+        </form>
       )}
-    </View>
+
+      {message && <p style={{ color: message.includes('Failed') ? 'red' : 'green' }}>{message}</p>}
+    </div>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 20,
-    backgroundColor: '#F2F2F7',
-  },
-  title: {
-    fontSize: 34,
-    fontWeight: "700",
-    color: '#000',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 17,
-    color: '#666',
-    marginBottom: 30,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 16,
-    fontSize: 17,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  otpInput: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 16,
-    fontSize: 24,
-    textAlign: 'center',
-    letterSpacing: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-});
-
-export default ForgotPassword;
+export default PasswordReset;

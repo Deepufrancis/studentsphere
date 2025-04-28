@@ -18,15 +18,16 @@ export default function Index() {
     if (!fontsLoaded) return null;
 
     return (
-        <ImageBackground
-            source={require("./assets/background.png")}
-            style={styles.background}
-            resizeMode="cover"
-        >
+         <LinearGradient
+              colors={['#f6f8ff', '#d8e2ff', '#b6cbff']}
+              style={styles.background}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
             <View style={styles.container}>
                 <View style={styles.contentContainer}>
                     <View style={styles.topSection}>
-                        <Text style={styles.title}>PU Student Sphere</Text>
+                        <Text style={styles.title}>PU Student{'\n'}Sphere</Text>
                     </View>
 
                     <View style={styles.bottomSection}>
@@ -34,8 +35,10 @@ export default function Index() {
                             <LinearGradient
                                 colors={['#4A90E2', '#357ABD']}
                                 style={styles.button}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
                             >
-                                <FontAwesome name="graduation-cap" size={24} color="white" style={styles.icon} />
+                                <FontAwesome name="graduation-cap" size={20} color="white" style={styles.icon} />
                                 <Text style={styles.buttonText}>Student Login</Text>
                             </LinearGradient>
                         </TouchableOpacity>
@@ -44,8 +47,10 @@ export default function Index() {
                             <LinearGradient
                                 colors={['#50C878', '#2E8B57']}
                                 style={styles.button}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
                             >
-                                <FontAwesome name="briefcase" size={24} color="white" style={styles.icon} />
+                                <FontAwesome name="briefcase" size={20} color="white" style={styles.icon} />
                                 <Text style={styles.buttonText}>Teacher Login</Text>
                             </LinearGradient>
                         </TouchableOpacity>
@@ -54,8 +59,10 @@ export default function Index() {
                             <LinearGradient
                                 colors={['#FF6B6B', '#EE5253']}
                                 style={styles.button}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
                             >
-                                <FontAwesome name="user-plus" size={24} color="white" style={styles.icon} />
+                                <FontAwesome name="user-plus" size={20} color="white" style={styles.icon} />
                                 <Text style={styles.buttonText}>Create Account</Text>
                             </LinearGradient>
                         </TouchableOpacity>
@@ -66,7 +73,7 @@ export default function Index() {
                     </View>
                 </View>
             </View>
-        </ImageBackground>
+        </LinearGradient>
     );
 }
 
@@ -76,77 +83,52 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        backgroundColor: 'transparent',
     },
     contentContainer: {
         flex: 1,
         justifyContent: 'space-between',
-        padding: 20,
+        padding: 24,
     },
     topSection: {
-        paddingTop: 70,
+        paddingTop: 80,
     },
     title: {
-        fontSize: 48,
-        color: '#ffffff',
+        fontSize: 42,
+        color: '#1a1a1a',
         fontFamily: "Poppins_700Bold",
-        textShadowColor: 'rgba(0, 0, 0, 0.75)',
-        textShadowOffset: { width: 2, height: 2 },
-        textShadowRadius: 4,
+        lineHeight: 52,
     },
     bottomSection: {
         width: "100%",
         alignItems: "center",
-        gap: 16,
-        marginBottom: 40,
+        gap: 12,
+        marginBottom: 50,
     },
     buttonWrapper: {
-        width: width * 0.85,
-        borderRadius: 12,
+        width: "100%",
+        borderRadius: 16,
         overflow: 'hidden',
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
     },
     button: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        padding: 18,
-        borderRadius: 12,
+        padding: 16,
+        borderRadius: 16,
     },
     icon: {
-        marginRight: 12,
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
+        marginRight: 10,
     },
     buttonText: {
         color: "#FFF",
-        fontSize: 18,
+        fontSize: 16,
         fontFamily: "Poppins_500Medium",
-        letterSpacing: 0.8,
-        textShadowColor: 'rgba(0, 0, 0, 0.3)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2,
     },
     forgotPasswordText: {
-        color: "#ffffff",
-        fontSize: 16,
+        color: "#1a1a1a",
+        fontSize: 14,
         fontFamily: "Poppins_400Regular",
-        marginTop: 15,
-        textDecorationLine: "underline",
-        textShadowColor: 'rgba(0, 0, 0, 0.75)',
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 2,
+        marginTop: 20,
     }
 });
