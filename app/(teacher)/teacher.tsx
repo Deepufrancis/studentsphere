@@ -60,8 +60,7 @@ const menuItems = [
   { label: "Discussions", icon: "forum-outline", route: "/tchat", color: "#845EC2" },
   { label: "Attendance", icon: "calendar-check", route: "/attendance", color: "#00C2A8" },
   { label: "Exams", icon: "file-certificate-outline", route: "/exams/exams", color: "#FF6B6B" },
-  { label: "Resources", icon: "file-excel", route: "/resources", color: "#4D8076" },
-  { label: "excel upload", icon: "file-excel", route: "/excelup", color: "#4D8076" },
+  { label: "Resources", icon: "bookshelf", route: "/resources", color: "#4D8076" },
 ];
 
 const styles = StyleSheet.create({

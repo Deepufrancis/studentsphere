@@ -73,37 +73,37 @@ export default function Dashboard() {
         onPress: () => router.push("./sclass"),
       },
       {
-        icon: "download-outline",
-        text: "Resources",
-        onPress: () => router.push("./resources"),
-        disabled: true,
-      }
-    ],
-    [
-      {
         icon: "chatbubbles-outline",
         text: "Discussions",
         onPress: () => router.push({
           pathname: "/schat",
           params: { selectedRole: "student" }
         }),
-      },
-      {
-        icon: "checkbox-outline",
-        text: "Attendance",
-        onPress: () => router.push("./sattendance"),
       }
     ],
     [
       {
+        icon: "checkbox-outline",
+        text: "Attendance",
+        onPress: () => router.push("./sattendance"),
+      },
+      {
         icon: "construct-outline",
         text: "Testing",
         onPress: () => router.push("/(student)/testing"),
-      },
+      }
+    ],
+    [
       {
         icon: "download-outline",
-        text: "resources",
+        text: "Resources",
         onPress: () => router.push("./sresources"),
+      },
+      {
+        icon: "information-circle-outline", // Added a placeholder icon
+        text: "Coming Soon",
+        onPress: () => {},
+        disabled: true
       }
     ]
   ];

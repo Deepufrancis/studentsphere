@@ -103,4 +103,65 @@ router.put('/courses/:id', async (req, res) => {
   }
 });
 
+// Remove a single student from classroom
+router.delete('/student/:classroomId/:studentIndex', async (req, res) => {
+  try {
+    const { classroomId, studentIndex } = req.params;
+    
+    // Find the classroom first
+    const classroom = await Classroom.findById(classroomId);
+    if (!classroom) {
+      return res.status(404).json({ message: 'Classroom not found' });
+    }
+    
+    // Check if the student index is valid
+    if (studentIndex < 0 || studentIndex >= classroom.students.length) {
+      return res.status(400).json({ message: 'Invalid student index' });
+    }
+    
+    // Remove the student at the specified index
+    classroom.students.splice(studentIndex, 1);
+    
+    // Save the updated classroom
+    const updatedClassroom = await classroom.save();
+    
+    res.json({
+      message: 'Student removed successfully',
+      classroom: updatedClassroom
+    });
+  } catch (error) {
+    console.error('Error removing student:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Alternative approach using student's unique identifier
+router.delete('/student/:classroomId/byId/:studentId', async (req, res) => {
+  try {
+    const { classroomId, studentId } = req.params;
+    
+    // Find the classroom
+    const classroom = await Classroom.findById(classroomId);
+    if (!classroom) {
+      return res.status(404).json({ message: 'Classroom not found' });
+    }
+    
+    // Filter out the student with the matching ID
+    classroom.students = classroom.students.filter(
+      student => student._id.toString() !== studentId
+    );
+    
+    // Save the updated classroom
+    const updatedClassroom = await classroom.save();
+    
+    res.json({
+      message: 'Student removed successfully',
+      classroom: updatedClassroom
+    });
+  } catch (error) {
+    console.error('Error removing student:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

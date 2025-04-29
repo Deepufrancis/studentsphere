@@ -77,7 +77,7 @@ const CreateClassroom = () => {
       }
     } catch (error) {
       console.error("Error during file picking:", error);
-      Alert.alert("Error", error.message);
+      Alert.alert("Error", error instanceof Error ? error.message : 'An error occurred');
     }
   };
 
@@ -123,6 +123,48 @@ const CreateClassroom = () => {
       Alert.alert('Error', 'Failed to fetch classrooms');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Add function to remove a student from classroom
+  const handleRemoveStudent = async (classroomId, studentIndex) => {
+    try {
+      Alert.alert(
+        "Remove Student",
+        "Are you sure you want to remove this student?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          {
+            text: "Remove", 
+            style: "destructive",
+            onPress: async () => {
+              const response = await fetch(`${API_BASE_URL}/classroom/student/${classroomId}/${studentIndex}`, {
+                method: 'DELETE',
+              });
+              
+              if (!response.ok) {
+                throw new Error('Failed to remove student');
+              }
+              
+              const result = await response.json();
+              
+              // Update the viewing classroom with the updated data
+              setViewingClassroom(result.classroom);
+              
+              // Also update the classrooms list
+              fetchClassrooms();
+              
+              Alert.alert("Success", "Student removed successfully");
+            }
+          }
+        ]
+      );
+    } catch (err) {
+      console.error('Error removing student:', err);
+      Alert.alert('Error', 'Failed to remove student');
     }
   };
 
@@ -179,15 +221,27 @@ const CreateClassroom = () => {
   const processSelectedColumns = () => {
     if (sheetData.length < 2) return [];
     
-    const processedData = sheetData.slice(1).map(row => ({
-      name: columnMap.name >= 0 ? row[columnMap.name] : '',
-      email: columnMap.email >= 0 ? row[columnMap.email] : '',
-      rollNumber: columnMap.rollNumber >= 0 ? row[columnMap.rollNumber] : ''
-    }));
+    try {
+      const processedData = sheetData.slice(1).map(row => {
+        // Check if row exists and has proper indexes
+        if (!row) return { name: '', email: '', rollNumber: '' };
+        
+        return {
+          name: columnMap.name >= 0 && row[columnMap.name] !== undefined ? row[columnMap.name] : '',
+          email: columnMap.email >= 0 && row[columnMap.email] !== undefined ? row[columnMap.email] : '',
+          rollNumber: columnMap.rollNumber >= 0 && row[columnMap.rollNumber] !== undefined ? row[columnMap.rollNumber] : ''
+        };
+      });
 
-    return processedData.filter(student => 
-      student.name || student.email || student.rollNumber
-    );
+      // Filter out empty rows
+      return processedData.filter(student => 
+        student.name || student.email || student.rollNumber
+      );
+    } catch (error) {
+      console.error("Error processing Excel data:", error);
+      Alert.alert("Error", "There was a problem processing the Excel data. Please check the file format.");
+      return [];
+    }
   };
 
   const handleCreateClassroom = async () => {
@@ -195,11 +249,24 @@ const CreateClassroom = () => {
       Alert.alert('Error', 'Please fill all the required fields');
       return;
     }
-
+    
+    // Additional validation for student data
+    let students = [];
+    
     try {
-      const students = inputMethod === 'excel' 
-        ? processSelectedColumns()
-        : manualStudents.filter(s => s.name || s.email || s.rollNumber);
+      if (inputMethod === 'excel') {
+        students = processSelectedColumns();
+        if (students.length === 0 && sheetData.length > 1) {
+          Alert.alert('Warning', 'No valid student data was found in the Excel file or selected columns. Please check your column mapping.');
+          return;
+        }
+      } else {
+        students = manualStudents.filter(s => s.name || s.email || s.rollNumber);
+        if (students.length === 0) {
+          Alert.alert('Warning', 'Please add at least one student with some information.');
+          return;
+        }
+      }
 
       const url = editingClassroom 
         ? `${API_BASE_URL}/classroom/edit/${editingClassroom._id}`
@@ -283,58 +350,93 @@ const CreateClassroom = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.heading}>Your Classrooms</Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.pageTitle}>Classroom Management</Text>
         <TouchableOpacity 
           style={styles.createBtn} 
           onPress={() => setIsModalVisible(true)}
         >
-          <Text style={styles.createBtnText}>+ Create Classroom</Text>
+          <Text style={styles.createBtnText}>+ New Classroom</Text>
         </TouchableOpacity>
       </View>
 
       {error ? (
         <Text style={[styles.userInfo, styles.error]}>{error}</Text>
       ) : isLoading ? (
-        <Text style={styles.userInfo}>Loading...</Text>
+        <Text style={styles.userInfo}>Loading user data...</Text>
       ) : username ? (
-        <Text style={styles.userInfo}>Welcome, {username}</Text>
+        <View style={styles.welcomeBar}>
+          <Text style={styles.welcomeText}>Welcome, Professor {username}</Text>
+        </View>
       ) : null}
 
+      <Text style={styles.sectionTitle}>Your Classrooms</Text>
+
       {loading ? (
-        <Text style={styles.loadingText}>Loading classrooms...</Text>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading classrooms...</Text>
+        </View>
       ) : classrooms.length > 0 ? (
         <ScrollView style={styles.classroomList}>
           {classrooms.map((classroom) => (
             <View key={classroom._id} style={styles.classroomCard}>
+              <View style={styles.cardBadge}>
+                <Text style={styles.badgeText}>{classroom.section}</Text>
+              </View>
               <View style={styles.classroomHeader}>
                 <View>
                   <Text style={styles.classroomName}>{classroom.className}</Text>
-                  <Text style={styles.classroomSection}>Section: {classroom.section}</Text>
-                </View>
-                <View style={styles.cardButtons}>
-                  <TouchableOpacity 
-                    style={styles.viewButton}
-                    onPress={() => handleViewClassroom(classroom)}
-                  >
-                    <Text style={styles.buttonText}>View</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.editButton}
-                    onPress={() => handleEditClassroom(classroom)}
-                  >
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </TouchableOpacity>
+                  <View style={styles.statsContainer}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statCount}>{classroom.students.length}</Text>
+                      <Text style={styles.statLabel}>Students</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                      <Text style={styles.statCount}>{classroom.courses?.length || 0}</Text>
+                      <Text style={styles.statLabel}>Courses</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
-              <Text style={styles.studentCount}>
-                {classroom.students.length} Students
-              </Text>
+              <View style={styles.cardButtons}>
+                <TouchableOpacity 
+                  style={styles.viewButton}
+                  onPress={() => handleViewClassroom(classroom)}
+                >
+                  <Text style={styles.buttonText}>View Details</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.editButton}
+                  onPress={() => handleEditClassroom(classroom)}
+                >
+                  <Text style={styles.buttonText}>Edit Class</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.coursesButton}
+                  onPress={() => {
+                    setViewingClassroom(classroom);
+                    setCourses(classroom.courses || []);
+                    setIsCoursesModalVisible(true);
+                  }}
+                >
+                  <Text style={styles.buttonText}>Manage Courses</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </ScrollView>
       ) : (
-        <Text style={styles.noClassrooms}>No classrooms created yet</Text>
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.noClassrooms}>No classrooms created yet</Text>
+          <Text style={styles.emptyStateSubtitle}>Create your first classroom to get started</Text>
+          <TouchableOpacity
+            style={styles.emptyStateButton}
+            onPress={() => setIsModalVisible(true)}
+          >
+            <Text style={styles.emptyStateButtonText}>Create Now</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       <Modal
@@ -604,9 +706,17 @@ const CreateClassroom = () => {
                   <ScrollView style={styles.studentListScroll}>
                     {viewingClassroom.students.map((student, index) => (
                       <View key={index} style={styles.studentListItem}>
-                        <Text style={styles.studentName}>{student.name}</Text>
-                        <Text style={styles.studentEmail}>{student.email}</Text>
-                        <Text style={styles.studentRoll}>Roll: {student.rollNumber}</Text>
+                        <View style={styles.studentInfoContainer}>
+                          <Text style={styles.studentName}>{student.name || 'N/A'}</Text>
+                          <Text style={styles.studentEmail}>{student.email || 'No email'}</Text>
+                          <Text style={styles.studentRoll}>Roll: {student.rollNumber || 'Not assigned'}</Text>
+                        </View>
+                        <TouchableOpacity 
+                          style={styles.studentRemoveButton}
+                          onPress={() => handleRemoveStudent(viewingClassroom._id, index)}
+                        >
+                          <Text style={styles.studentRemoveButtonText}>Remove</Text>
+                        </TouchableOpacity>
                       </View>
                     ))}
                   </ScrollView>
@@ -690,18 +800,69 @@ const CreateClassroom = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 40, backgroundColor: "#fff" },
-  heading: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    paddingTop: 40, 
+    backgroundColor: "#f5f7fa" 
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: '#263238',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 15,
+    marginTop: 10,
+    color: '#455a64',
+  },
+  welcomeBar: {
+    backgroundColor: '#e3f2fd',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#1565c0',
+  },
   button: {
     backgroundColor: "#2196F3",
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
+    elevation: 2,
   },
-  buttonText: { color: "#fff", textAlign: "center", fontSize: 16 },
-  fileName: { marginTop: 10, fontStyle: "italic", textAlign: "center" },
+  buttonText: { 
+    color: "#fff", 
+    textAlign: "center", 
+    fontSize: 16,
+    fontWeight: "500", 
+  },
+  fileName: { 
+    marginTop: 10, 
+    fontStyle: "italic", 
+    textAlign: "center" 
+  },
   scrollView: { marginTop: 20 },
-  row: { flexDirection: "row", borderBottomWidth: 1, borderColor: "#eee" },
+  row: { 
+    flexDirection: "row", 
+    borderBottomWidth: 1, 
+    borderColor: "#eee" 
+  },
   cell: {
     padding: 8,
     minWidth: 100,
@@ -720,6 +881,11 @@ const styles = StyleSheet.create({
   },
   error: {
     color: 'red',
+    backgroundColor: '#ffebee',
+    padding: 10,
+    borderRadius: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#d32f2f',
   },
   formContainer: {
     marginBottom: 20,
@@ -731,48 +897,50 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 10,
     fontSize: 16,
+    backgroundColor: '#f9f9f9',
   },
   subHeading: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 10,
+    color: '#455a64',
   },
   createButton: {
     backgroundColor: '#4CAF50',
     marginTop: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    elevation: 2,
   },
   createBtn: {
     backgroundColor: '#4CAF50',
-    padding: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 8,
+    elevation: 2,
   },
   createBtnText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: "600",
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     padding: 20,
   },
   modalContent: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 20,
-    maxHeight: '80%',
+    padding: 24,
+    maxHeight: '90%',
+    elevation: 5,
   },
   modalHeading: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+    color: '#263238',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -783,64 +951,143 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff5252',
     flex: 1,
     marginRight: 10,
-  },
-  createButton: {
-    backgroundColor: '#4CAF50',
-    flex: 1,
-    marginLeft: 10,
+    elevation: 2,
   },
   classroomList: {
     flex: 1,
     marginTop: 10,
   },
   classroomCard: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#dee2e6',
+    borderColor: '#e1e1e1',
+    elevation: 2,
+    position: 'relative',
+  },
+  cardBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#7e57c2',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderTopRightRadius: 10,
+    borderBottomLeftRadius: 10,
+  },
+  badgeText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
   },
   classroomHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 15,
   },
   classroomName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#212529',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#263238',
+    marginBottom: 8,
   },
-  classroomSection: {
-    fontSize: 16,
-    color: '#6c757d',
+  statsContainer: {
+    flexDirection: 'row',
+    marginTop: 10,
   },
-  studentCount: {
+  statItem: {
+    alignItems: 'center',
+  },
+  statCount: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#455a64',
+  },
+  statLabel: {
     fontSize: 14,
-    color: '#495057',
+    color: '#78909c',
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: '#e0e0e0',
+    marginHorizontal: 15,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 40,
   },
   loadingText: {
     textAlign: 'center',
     fontSize: 16,
-    color: '#6c757d',
-    marginTop: 20,
+    color: '#78909c',
   },
   noClassrooms: {
     textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#455a64',
+    marginBottom: 8,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 60,
+  },
+  emptyStateSubtitle: {
+    textAlign: 'center',
     fontSize: 16,
-    color: '#6c757d',
-    marginTop: 20,
+    color: '#78909c',
+    marginBottom: 24,
+  },
+  emptyStateButton: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
+    elevation: 2,
+  },
+  emptyStateButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cardButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#eeeeee',
+    paddingTop: 15,
+  },
+  viewButton: {
+    backgroundColor: '#03a9f4',
+    padding: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginRight: 8,
+    elevation: 1,
   },
   editButton: {
-    backgroundColor: '#2196F3',
-    padding: 8,
-    borderRadius: 6,
+    backgroundColor: '#ff9800',
+    padding: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 4,
+    elevation: 1,
   },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 14,
+  coursesButton: {
+    backgroundColor: '#9c27b0',
+    padding: 10,
+    borderRadius: 8,
+    flex: 1,
+    marginLeft: 8,
+    elevation: 1,
   },
+  // ...existing style properties...
+  
   inputMethodToggle: {
     flexDirection: 'row',
     marginBottom: 20,
@@ -851,7 +1098,7 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     flex: 1,
-    padding: 10,
+    padding: 12,
     backgroundColor: '#f8f9fa',
   },
   toggleButtonActive: {
@@ -859,6 +1106,7 @@ const styles = StyleSheet.create({
   },
   toggleButtonText: {
     textAlign: 'center',
+    fontWeight: '500',
     color: '#666',
   },
   manualInputContainer: {
@@ -886,21 +1134,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff5252',
     borderRadius: 4,
     marginLeft: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 36,
+    height: 36,
   },
   removeButtonText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: 'bold',
   },
   addButton: {
     backgroundColor: '#4CAF50',
     padding: 10,
     borderRadius: 8,
     marginTop: 10,
+    elevation: 1,
   },
   addButtonText: {
     color: '#fff',
     textAlign: 'center',
     fontSize: 16,
+    fontWeight: '500',
   },
   extractButton: {
     backgroundColor: '#4CAF50',
@@ -911,11 +1166,15 @@ const styles = StyleSheet.create({
   previewScrollView: {
     maxHeight: '70%',
     marginVertical: 15,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 4,
   },
   previewRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderColor: '#eee',
+    backgroundColor: '#fdfdfd',
   },
   previewCell: {
     padding: 8,
@@ -937,6 +1196,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     flex: 1,
     marginLeft: 10,
+    elevation: 2,
   },
   columnMappingContainer: {
     marginBottom: 15,
@@ -966,86 +1226,124 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#333',
   },
-  cardButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  viewButton: {
-    backgroundColor: '#4CAF50',
-    padding: 8,
-    borderRadius: 6,
-    marginRight: 8,
-  },
+  // View Modal Styles
   detailsContainer: {
     marginBottom: 20,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 15,
   },
   detailLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#666',
+    color: '#455a64',
     marginTop: 10,
   },
   detailValue: {
     fontSize: 18,
-    color: '#333',
+    color: '#263238',
     marginBottom: 10,
+    paddingLeft: 10,
   },
   studentListHeader: {
     fontSize: 18,
     fontWeight: 'bold',
     marginTop: 20,
     marginBottom: 10,
+    color: '#455a64',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    paddingBottom: 5,
   },
   studentListScroll: {
-    maxHeight: '50%',
+    maxHeight: 300,
+    marginTop: 5,
   },
   studentListItem: {
     padding: 12,
     borderBottomWidth: 1,
     borderColor: '#eee',
+    backgroundColor: '#ffffff',
+    borderRadius: 4,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  studentInfoContainer: {
+    flex: 1,
   },
   studentName: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#263238',
   },
   studentEmail: {
     fontSize: 14,
-    color: '#666',
+    color: '#455a64',
     marginTop: 4,
   },
   studentRoll: {
     fontSize: 14,
-    color: '#666',
+    color: '#757575',
     marginTop: 2,
+    fontWeight: '500',
+  },
+  studentRemoveButton: {
+    backgroundColor: '#ff5252',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    marginLeft: 10,
+  },
+  studentRemoveButtonText: {
+    color: '#fff',
+    fontWeight: '500',
+    fontSize: 12,
   },
   closeButton: {
-    backgroundColor: '#666',
+    backgroundColor: '#455a64',
     marginTop: 20,
+    elevation: 1,
   },
+  // Course Modal Styles
   courseForm: {
     marginBottom: 20,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 15,
   },
   courseList: {
-    maxHeight: '50%',
+    maxHeight: 300,
   },
   courseItem: {
     padding: 12,
     borderBottomWidth: 1,
     borderColor: '#eee',
+    backgroundColor: '#ffffff',
+    borderRadius: 4,
+    marginBottom: 8,
   },
   courseName: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#263238',
   },
   courseDescription: {
     fontSize: 14,
-    color: '#666',
+    color: '#455a64',
     marginTop: 4,
   },
   courseSchedule: {
     fontSize: 14,
-    color: '#666',
+    color: '#757575',
     marginTop: 2,
+    fontStyle: 'italic',
+  },
+  heading: {
+    fontSize: 20, 
+    fontWeight: "bold", 
+    marginBottom: 20
   },
 });
 
